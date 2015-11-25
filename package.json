@@ -1,0 +1,71 @@
+{
+  "name": "hxcpp-debug",
+  "displayName": "hxcpp Debug",
+  "version": "0.0.1",
+  "publisher": "jcward",
+  "description": "VS Code debug adapter for Haxe hxcpp runtime.",
+  "author": {
+    "name": "Jeff Ward"
+  },
+  "engines": {
+    "vscode": "^0.10.1"
+  },
+  "icon": "images/mock-debug-icon.svg",
+  "categories": [
+    "Debuggers"
+  ],
+  "private": true,
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jcward/vscode-hxcpp-debug.git"
+  },
+  "contributes": {
+    "debuggers": [
+      {
+        "type": "hxcpp",
+        "label": "hxcpp Debug",
+
+        "enableBreakpointsFor": { "languageIds": [ "haxe" ] },
+
+        "windows": {
+            "program": "./bin/vschxcppdb.exe"
+        },
+        "osx": {
+            "program": "./bin/vschxcppdb"
+        },
+        "linux": {
+            "program": "./bin/vschxcppdb"
+        },
+
+        "configurationAttributes": {
+          "launch": {
+            "required": [ "program" ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Workspace relative path to a text file.",
+                "default": "readme.md"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch.",
+                "default": true
+              }
+            }
+          }
+        },
+
+        "initialConfigurations": [
+          {
+            "name": "hxcpp-Debug",
+            "type": "hxcpp",
+            "request": "launch",
+            "program": "readme.md",
+            "stopOnEntry": true
+          }
+        ]
+      }
+    ]
+  }
+}
