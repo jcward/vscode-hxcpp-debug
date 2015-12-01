@@ -4,6 +4,8 @@ import haxe.io.Input;
 import haxe.io.Output;
 import haxe.io.Bytes;
 
+import sys.io.Process;
+
 class Main {
   static function main() {
     var log = sys.io.File.append("/tmp/adapter.log", false);
@@ -18,6 +20,9 @@ class DebugAdapter {
 
   var _init_args:Dynamic;
   var _launch_req:Dynamic;
+
+  var _compile_process:Process;
+  var _run_process:Process;
 
   public function new(i:Input, o:Output, log:Output) {
     _input = i;
@@ -93,7 +98,7 @@ class DebugAdapter {
     var command:String = request.command;
     log("Got command: "+command);
 
-    var response = {
+    var response:Dynamic = {
       request_seq:request.seq,
       command:request.command,
       success:false
@@ -109,22 +114,52 @@ class DebugAdapter {
       case "launch": {
         log("Launching...");
         _launch_req = request;
-        var cwd:String = _launch_req.arguments.cwd;
-        log("cwd: "+cwd);
-        var program:String = _launch_req.arguments.program;
-        if (program.indexOf(cwd)==0) program = program.substr(cwd.length+1);
-        log("Program: "+program);
+        var compileCommand:String = null;
+        var compilePath:String = null;
+        var runCommand:String = null;
+        var runPath:String = null;
+        for (arg in (_launch_req.arguments.args:Array<String>)) {
+          var eq = arg.indexOf('=');
+          var name = arg.substr(0, eq);
+          var value = arg.substr(eq+1);
+          log("Arg "+name+" is "+value);
+          switch name {
+            case "compileCommand": compileCommand = value;
+            case "compilePath": compilePath = value;
+            case "runCommand": runCommand = value;
+            case "runPath": runPath = value;
+            default: log("Unknown arg name '"+name+"'"); do_disconnect();
+          }
+        }
 
-        var old = Sys.getCwd();
-        Sys.setCwd(cwd);
-        var args = split_args(program);
-        log("args: "+args.join(", "));
-        var compile = new sys.io.Process(args.shift(), args);
-        Sys.setCwd(old);
-        var success = (compile.exitCode()==0);
-        var output = compile.stdout.readAll();
-        log("Compile "+(success ? "succeeded!" : "FAILED!"));
-        log(output.getString(0, output.length));
+        var success = true;
+        var did_compile = false;
+        if (compileCommand!=null) {
+          log("Compiling...");
+          _compile_process = start_process(compileCommand, compilePath);
+
+          // Blocks until complete:
+          success = (_compile_process.exitCode()==0);
+          var output = _compile_process.stdout.readAll();
+          log("Compile "+(success ? "succeeded!" : "FAILED!"));
+          log(output.getString(0, output.length));
+
+          did_compile = (success==true);
+        }
+
+        if (success) {
+          if (runCommand!=null) {
+            _run_process = start_process(runCommand, runPath);
+          } else {
+            success = false;
+            response.message = (did_compile ? "Compile successful, but " : "") +
+              "runCommand was not specified.";
+          }
+        } else {
+          success = false;
+          response.message = "Compile failed. See <todo: logfile>.";
+        }
+
         response.success = success;
         send_response(response);
       }
@@ -134,12 +169,32 @@ class DebugAdapter {
       }
 
       case "disconnect": {
-        // TODO: restart
-        // {"type":"request","seq":3,"command":"disconnect","arguments":{"extensionHostData":{"restart":true}}}
-
-        log("Disconnecting, TODO: kill app?");
-        Sys.exit(0);
+        do_disconnect();
       }
     }
+  }
+
+  function do_disconnect(send_message:Bool=false):Void
+  {
+    if (_run_process!=null) {
+      _run_process.kill();
+    }
+    if (send_message) {
+      log("Sending disconnect message to VSCode");
+      send_response({"type":"request","seq":1,"command":"disconnect","arguments":{"extensionHostData":{"restart":false}}});
+    }
+    log("Disconnecting...");
+    Sys.exit(0);
+  }
+
+  function start_process(cmd:String, path:String):Process
+  {
+    var old = Sys.getCwd();
+    Sys.setCwd(path);
+    var args = split_args(cmd);
+    log("args: "+args.join(", "));
+    var proc = new sys.io.Process(args.shift(), args);
+    Sys.setCwd(old);
+    return proc;
   }
 }
