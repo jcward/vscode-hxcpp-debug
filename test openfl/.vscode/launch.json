@@ -1,0 +1,19 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+//			"runtimeExecutable": "${execPath}",
+			"args": [
+				"compilePath=${workspaceRoot}",
+				"compileCommand=openfl build linux",
+				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
+				"runCommand=DisplayingABitmap"
+			],
+			"name": "Debug mode",
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		}
+	]
+}

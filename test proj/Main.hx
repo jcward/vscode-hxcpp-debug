@@ -1,5 +1,10 @@
 package;
 
+import cpp.vm.Thread;
+import cpp.vm.Deque;
+import haxe.io.Input;
+import haxe.io.Bytes;
+
 class Main {
   static function main() {
     var things = [];
@@ -43,9 +48,25 @@ class Main {
     // }
     // trace("Exit code: "+p.exitCode());
 
+    async_test();
+
     while (true) {
-      trace("blah");
+      var i = Sys.getChar(true);
+      trace("read: "+i);
       Sys.sleep(1);
+    }
+  }
+
+  public static function async_test():Void
+  {
+    var a:AsyncInput = new AsyncInput(Sys.stdin());
+    while (true) {
+      if (a.hasData()) {
+        trace("Read: "+a.readByte());
+      } else {
+        trace("No data for now...");
+        Sys.sleep(0.5);
+      }
     }
   }
 }
@@ -74,4 +95,58 @@ class Thing
   {
     trace(salutation+", I'm "+name);
   }
+}
+
+
+class AsyncInput {
+  var _input:Input;
+  var _data:Deque<Int>;
+
+  public function new(i:Input) {
+    _input = i;
+    _data = new Deque<Int>();
+    var t = Thread.create(readInput);
+    t.sendMessage(_input);
+    t.sendMessage(_data);
+  }
+
+  var buffer:Null<Int> = null;
+  public function hasData():Bool // non-blocking
+  {
+    if (buffer!=null) return true;
+    buffer = _data.pop(false);
+    return (buffer!=null);
+  }
+
+  public function readByte():Int // blocking
+  {
+    var rtn:Int = 0;
+    if (buffer==null) { buffer = _data.pop(true); }
+    rtn = buffer;
+    buffer = null;
+    return rtn;
+  }
+
+  public function read(num_bytes:Int):Bytes // blocking
+  {
+    var rtn:Bytes = Bytes.alloc(num_bytes);
+    var ptr:Int = 0;
+    while (ptr<num_bytes) rtn.set(ptr++, readByte());
+    return rtn;
+  }
+
+  // Thread
+  static private function readInput()
+  {
+    var _input:Input = Thread.readMessage(true);
+    var _data:Deque<Int> = Thread.readMessage(true);
+
+    trace("Waiting to read something! on "+_input+" for "+_data);
+
+    while (true) {
+      _data.add(_input.readByte());
+      trace("Read something!");
+    }
+  }
+
 }
