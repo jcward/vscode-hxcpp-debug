@@ -7,7 +7,10 @@
 	<source path="Source" />
 	
 	<haxelib name="openfl" />
-	
+
+	<haxelib name="debugger" if="debug" />
+	<haxedef name="HXCPP_DEBUGGER" if="debug"/>
+
 	<assets path="Assets" rename="assets" />
 	
 </project>

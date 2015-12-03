@@ -18,7 +18,7 @@
 
 package debugger;
 
-import debugger.CommandLineController;
+import debugger.VSCController;
 import debugger.HaxeProtocol;
 import debugger.IController;
 
@@ -31,15 +31,17 @@ class VSCHaxeServer
   private var mSocketQueue : Deque<sys.net.Socket>;
   private var mCommandQueue : Deque<Command>;
   private var mReadCommandQueue : Deque<Bool>;
+  private var log:String->Void;
 
   /**
    * Creates a server.  This function never returns.
    **/
-    public function new(log : String->Void,
+    public function new(logFunc : String->Void,
                         host : String="localhost",
                         port : Int=6972)
     {
-        mController = new VSCController();
+        log = logFunc;
+        mController = new VSCController(logFunc);
         mSocketQueue = new Deque<sys.net.Socket>();
         mCommandQueue = new Deque<Command>();
         mReadCommandQueue = new Deque<Bool>();
@@ -110,7 +112,7 @@ class VSCHaxeServer
                         okToShowPrompt = true;
                     }
 
-                    controller.acceptMessage(message);
+                    mController.acceptMessage(message);
 
                     if (okToShowPrompt) {
                         // OK to show the next prompt; pop whatever is there

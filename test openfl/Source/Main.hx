@@ -6,11 +6,17 @@ import openfl.display.BitmapData;
 import openfl.display.Sprite;
 import openfl.Assets;
 
+#if debug
+import debugger.HaxeRemote;
+#end
 
 class Main extends Sprite {
 	
 	
 	public function new () {
+#if debug
+    new debugger.HaxeRemote(true, "localhost");
+#end
 		
 		super ();
 		

@@ -20,6 +20,7 @@ package debugger;
 
 import debugger.IController;
 
+import cpp.vm.Thread;
 
 /**
  * This class implements a command line interface to a debugger.  It
@@ -31,7 +32,7 @@ import debugger.IController;
 class VSCController implements IController
 {
   var log:String->Void;
-  var log_n:String->Void; // no newline...
+  static var log_n:String->Void; // no newline...
 
     /**
      * Creates a new command line interface.  This interface will read and
@@ -48,12 +49,6 @@ class VSCController implements IController
         log("-=-                  Have fun!                   -=-");
 
         mUnsafeMode = false;
-        mInputs = new Array<haxe.io.Input>();
-        mInputs.push(Sys.stdin());
-        mStoredCommands = new Array<String>();
-        mLastCommand = null;
-        // Command 0 is not valid
-        mStoredCommands.push("");
         this.setupRegexHandlers();
     }
 
@@ -73,101 +68,19 @@ class VSCController implements IController
 
     public function getNextCommand() : Command
     {
-        var carriedCommandLine : String = "";
 
         while (true) {
-            var input = mInputs[mInputs.length - 1];
-
-            if (mInputs.length == 1) {
-                log_n("\n" + mStoredCommands.length + "> " +
-                          carriedCommandLine);
-            }
 
             var commandLine = null;
 
-            try {
-                commandLine = StringTools.trim(carriedCommandLine + 
-                                               input.readLine());
-                carriedCommandLine = "";
-            }
-            catch (e : haxe.io.Eof) {
-                log("\n");
-                input.close();
-                mInputs.pop();
-                if (mInputs.length == 0) {
-                    return Detach;
-                }
-                else {
-                    continue;
-                }
-            }
+            commandLine = Thread.readMessage(true); //StringTools.trim(input.readLine());
 
-            if (mInputs.length == 1) {
-                log("");
-            }
-
-            // If the command line ends with "\", don't execute the command,
-            // just append it to the carriedCommandLine.  This is to assist
-            // when program or thread event output has confused the user and
-            // they wish to continue the command in progress.
-            
-            if (StringTools.endsWith(commandLine, "\\")) {
-                carriedCommandLine = 
-                    commandLine.substr(0, commandLine.length - 1);
-                continue;
-            }
-
-            // If the line is empty, the skip it unless the input is
-            // stdin and the last command was one of the commands that
-            // is repeated automatically (continue, step, next, finish, up,
-            // and down)
-            if (commandLine.length == 0) {
-                // If reading from a sourced file or this is the first
-                // command, don't try to repeat
-                if ((mInputs.length > 1) || (mLastCommand == null)) {
-                    continue;
-                }
-                switch (mLastCommand) {
-                case Continue(n):
-                case Step(n):
-                case Next(n):
-                case Finish(n):
-                case Up(n):
-                case Down(n):
-                default:
-                    // For anything other than the above, read a new command
-                    continue;
-                }
-                // For Continue, Step, Next, Finish, Up, or Down, repeat
-                return mLastCommand;
-            }
-
-            var charZero = commandLine.charAt(0);
-
-            // If the command is a comment, do nothing
-            if (charZero == "#") {
-                continue;
-            }
-
-            if (mInputs.length != 1) {
-                log("\n" + mStoredCommands.length + "> " + commandLine);
-            }
-
-            // If it's a bang command, replace it with the stored command
-            if (charZero == "!") {
-                var number = 
-                    Std.parseInt(StringTools.trim(commandLine.substr(1)));
-                if ((number <= 0) || (number >= mStoredCommands.length)) {
-                    log("No command " + number + " in history.");
-                    continue;
-                }
-                commandLine = mStoredCommands[number];
-                // Print out the command line to show what is being run
-                log(number + ") " + commandLine);
-            }
-            else {
-                mStoredCommands.push(commandLine);
-            }
+            //}
+            //catch (e : haxe.io.Eof) {
+            //    log("\n");
+            //    input.close();
+            //    return Detach;
+            //}
 
             var command : Command = null;
 
@@ -182,14 +95,13 @@ class VSCController implements IController
             }
 
             if (!matched) {
-                log("Invalid command.");
+                log("VSCController: Invalid command.");
                 continue;
             }
 
             if (command != null) {
                 // Instruction was not handled locally, so pass it on to the
                 // debugger
-                mLastCommand = command;
                 return command;
             }
         }
@@ -197,11 +109,6 @@ class VSCController implements IController
 
     public function acceptMessage(message : Message)
     {
-        // This makes the output of the 'source' command look a little better
-        if (mInputs.length > 1) {
-            log("");
-        }
-
         switch (message) {
         case ErrorInternal(details):
             log("Debugged thread reported internal error: " + details);
@@ -470,87 +377,6 @@ class VSCController implements IController
             log("No such command '" + cmd + "'");
         }
         return null;
-    }
-
-    private function source(regex : EReg) : Null<Command>
-    {
-        var line = regex.matched(1);
-        if (line.length == 0) {
-            log("The source command requires one argument.");
-            return null;
-        }
-        if (gRegexQuotes.match(line)) {
-            source_file(gRegexQuotes.matched(1));
-        }
-        else if (gRegexNoQuotes.match(line)) {
-            source_file(gRegexNoQuotes.matched(1));
-        }
-        else {
-            log("Failed to parse source line at: " + line + ".");
-        }
-
-        return null;
-    }
-
-    private function source_file(path : String) : Null<Command>
-    {
-        try {
-            mInputs.push(sys.io.File.read(path));
-            log("Executing debugger commands from " + path + " ...");
-        }
-        catch (e : Dynamic) {
-            log("Failed to open " + path + " for sourcing.");
-        }
-
-        return null;
-    }
-
-    private function history(regex : EReg) : Null<Command>
-    {
-        this.historyRange(1, mStoredCommands.length - 1);
-        return null;
-    }
-
-    private function history_at(regex : EReg) : Null<Command>
-    {
-        var number = Std.parseInt(regex.matched(1));
-        this.historyRange(number, number);
-        return null;
-    }
-
-    private function history_upto(regex : EReg) : Null<Command>
-    {
-        this.historyRange(1, Std.parseInt(regex.matched(1)));
-        return null;
-    }
-
-    private function history_from(regex : EReg) : Null<Command>
-    {
-        this.historyRange(Std.parseInt(regex.matched(1)), 
-                           mStoredCommands.length - 1);
-        return null;
-    }
-
-    private function history_from_upto(regex : EReg) : Null<Command>
-    {
-        this.historyRange(Std.parseInt(regex.matched(1)),
-                          Std.parseInt(regex.matched(2)));
-        return null;
-    }
-
-    private function historyRange(first : Int, last : Int)
-    {
-        if (first < 1) {
-            first = 1;
-        }
-
-        if (last >= mStoredCommands.length) {
-            last = (mStoredCommands.length - 1);
-        }
-
-        for (i in first ... (last + 1)) {
-            log("(" + i + ") " + mStoredCommands[i]);
-        }
     }
 
     private function files(regex : EReg) : Null<Command>
@@ -893,7 +719,7 @@ class VSCController implements IController
         case Element(string, next):
             log_n("Unresolvable classes: ");
             printStringList(unresolvableClasses, ", ");
-            log(".");
+            log_n(".\n");
         }
     }
 
@@ -1014,12 +840,6 @@ class VSCController implements IController
   { r: ~/^detach[\s]*$/, h: detach },
   { r: ~/^help()[\s]*$/, h: help },
   { r: ~/^help[\s]+([^\s]*)$/, h: help },
-  { r: ~/^source[\s]+(.*)$/, h: source },
-  { r: ~/^history[\s]*$/, h: history },
-  { r: ~/^history[\s]+([0-9]+)$/, h: history_at },
-  { r: ~/^history[\s]+-[\s]*([0-9]+)$/, h: history_upto },
-  { r: ~/^history[\s]+([0-9]+)[\s]*-$/, h: history_from },
-  { r: ~/^history[\s]+([0-9]+)[\s]*-[\s]*([0-9]+)$/, h: history_from_upto },
   { r: ~/^filespath[\s]*$/, h: filespath },
   { r: ~/^files[\s]*$/, h: files },
   { r: ~/^classes[\s]*$/, h: classes },
@@ -1076,9 +896,6 @@ class VSCController implements IController
     }
 
     private var mUnsafeMode : Bool;
-    private var mInputs : Array<haxe.io.Input>;
-    private var mStoredCommands : Array<String>;
-    private var mLastCommand : Command;
     private var mRegexHandlers : Array<RegexHandler>;
     private static var gRegexQuotes = ~/^[\s]*"([^"]+)"[\s]*$/;
     private static var gRegexNoQuotes = ~/^[\s]*([^\s"]+)[\s]*$/;

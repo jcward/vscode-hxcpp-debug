@@ -8,6 +8,7 @@ import sys.io.Process;
 
 import cpp.vm.Thread;
 import cpp.vm.Deque;
+import cpp.vm.Mutex;
 
 class Main {
   static function main() {
@@ -35,12 +36,16 @@ class DebugAdapter {
 
   var _runCommand:String = null;
   var _runPath:String = null;
+  var _runInTerminal:Bool = false;
   var _run_process:Process;
+
+  var _vsc_haxe_server:Thread;
 
   public function new(i:Input, o:Output, log:Output) {
     _input = new AsyncInput(i);
     _output = o;
     _log = log;
+    _log_mutex = new Mutex();
 
     while (true) {
       if (_input.hasData()) read_header();
@@ -49,7 +54,14 @@ class DebugAdapter {
     }
   }
 
-  function log(s:String) { _log.writeString(Sys.time()+": "+s+"\n"); }
+  var _log_mutex:Mutex;
+  function log(s:String) {
+    _log_mutex.acquire();
+    _log.writeString(Sys.time()+": "+s+"\n");
+    _log.flush();
+    _log_mutex.release();
+  }
+
   function burn_blank_line():Void
   {
     if (_input.readByte()!=13) log("Protocol error, expected 13");
@@ -176,6 +188,7 @@ class DebugAdapter {
             case "compilePath": compilePath = value;
             case "runCommand": _runCommand = value;
             case "runPath": _runPath = value;
+            case "runInTerminal": _runInTerminal = (value.toLowerCase()=='true');
             default: log("Unknown arg name '"+name+"'"); do_disconnect();
           }
         }
@@ -232,10 +245,14 @@ class DebugAdapter {
   }
 
   function do_run() {
+    log("Starting VSCHaxeServer port 6972...");
+    _vsc_haxe_server = Thread.create(start_server);
+    _vsc_haxe_server.sendMessage(log);
+
     log("Launching application...");
     send_output("Launching application...");
 
-    _run_process = start_process(_runCommand, _runPath, true);
+    _run_process = start_process(_runCommand, _runPath, _runInTerminal);
 
     send_event({"event":"initialized"});
   }
@@ -282,19 +299,18 @@ class DebugAdapter {
 
   }
 
-
   function do_disconnect(send_message:Bool=false):Void
   {
     if (_run_process!=null) {
       log("Killing _run_process");
       _run_process.close();
-      _run_process.kill();
+      _run_process.kill(); // TODO, this is not closing the app
       _run_process = null;
     }
     if (_compile_process!=null) {
       log("Killing _compile_process");
       _compile_process.close();
-      _compile_process.kill();
+      _compile_process.kill(); // TODO, this is not closing the process
       _compile_process = null;
     }
     if (send_message) {
@@ -318,11 +334,28 @@ class DebugAdapter {
     var args = split_args(cmd);
     log("args: "+args.join('|'));
     var display = args.join(" ");
-    var proc = new sys.io.Process(args.shift(), args);
+    cmd = args.shift();
+
+    // TODO: file separator for windows? Maybe not necessary for windows
+    // as ./ is in the PATH by default?
+    if (sys.FileSystem.exists(path+'/'+cmd)) {
+      log("Setting ./ prefix");
+      cmd = "./"+cmd;
+    }
+
+    var proc = new sys.io.Process(cmd, args);
     log("Starting: "+display+", pid="+proc.getPid());
     if (old!=null) Sys.setCwd(old);
     return proc;
   }
+
+  static function start_server():Void
+  {
+    var log:String->Void = Thread.readMessage(true);
+    var vschs = new debugger.VSCHaxeServer(log);
+    // fyi, the above constructor function does not return
+  }
+
 }
 
 class AsyncInput {

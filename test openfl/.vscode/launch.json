@@ -5,9 +5,10 @@
 //			"runtimeExecutable": "${execPath}",
 			"args": [
 				"compilePath=${workspaceRoot}",
-				"compileCommand=openfl build linux",
+				"compileCommand=openfl build linux -debug",
 				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
-				"runCommand=DisplayingABitmap"
+				"runCommand=DisplayingABitmap",
+				"runInTerminal=false"
 			],
 			"name": "Debug mode",
 			"type": "hxcpp",

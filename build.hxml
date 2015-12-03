@@ -1,3 +1,4 @@
 -cp src
 -main Main
 -cpp bin
+-lib debugger
