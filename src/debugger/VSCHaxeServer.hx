@@ -27,25 +27,24 @@ import cpp.vm.Thread;
 
 class VSCHaxeServer
 {
-  private var mController : VSCController;
+  //private var mController : VSCController;
   private var mSocketQueue : Deque<sys.net.Socket>;
-  private var mCommandQueue : Deque<Command>;
-  private var mReadCommandQueue : Deque<Bool>;
   private var log:String->Void;
 
   /**
    * Creates a server.  This function never returns.
    **/
     public function new(logFunc : String->Void,
+                        commandQueue : Deque<Command>,
+                        messageQueue : Deque<Message>,
                         host : String="localhost",
                         port : Int=6972)
     {
         log = logFunc;
-        mController = new VSCController(logFunc);
+        //mController = new VSCController(logFunc);
         mSocketQueue = new Deque<sys.net.Socket>();
-        mCommandQueue = new Deque<Command>();
-        mReadCommandQueue = new Deque<Bool>();
-        Thread.create(readCommandMain);
+        var t = Thread.create(readCommandMain);
+        t.sendMessage(commandQueue);
 
         var listenSocket : sys.net.Socket = null;
 
@@ -90,7 +89,9 @@ class VSCHaxeServer
 
             // Push the socket to the command thread to read from
             mSocketQueue.push(socket);
-            mReadCommandQueue.push(true);
+
+            // Send an OK message to indicate connection
+            messageQueue.add(OK);
 
             try {
                 while (true) {
@@ -100,29 +101,9 @@ class VSCHaxeServer
                     var message : Message =
                         HaxeProtocol.readMessage(socket.input);
 
-                    var okToShowPrompt : Bool = false;
+                    //mController.acceptMessage(message);
+                    messageQueue.add(message);
 
-                    switch (message) {
-                    case ThreadCreated(number):
-                    case ThreadTerminated(number):
-                    case ThreadStarted(number):
-                    case ThreadStopped(number, frameNumber, className,
-                                       functionName, fileName, lineNumber):
-                    default:
-                        okToShowPrompt = true;
-                    }
-
-                    mController.acceptMessage(message);
-
-                    if (okToShowPrompt) {
-                        // OK to show the next prompt; pop whatever is there
-                        // to ensure that there is never more than one element
-                        // in there.  This helps with "source" commands that
-                        // issue tons of commands in sequence
-                        while (mReadCommandQueue.pop(false)) {
-                        }
-                        mReadCommandQueue.push(true);
-                    }
                 }
             }
             catch (e : haxe.io.Eof) {
@@ -137,19 +118,18 @@ class VSCHaxeServer
 
     public function readCommandMain()
     {
+        var commandQueue:Deque<Command> = Thread.readMessage(true);
+
         while (true) {
             // Get the next socket to use
             var socket = mSocketQueue.pop(true);
 
-            // Read commands from the controller and pass them on to the
+            // Read commands from vschxcppdb and pass them on to the
             // server
             try {
                 while (true) {
-                    // Wait until the command prompt should be shown
-                    mReadCommandQueue.pop(true);
-
                     HaxeProtocol.writeCommand
-                        (socket.output, mController.getNextCommand());
+                      (socket.output, commandQueue.pop(true));
                 }
             }
             catch (e : haxe.io.Eof) {

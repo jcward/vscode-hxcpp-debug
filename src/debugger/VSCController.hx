@@ -71,9 +71,10 @@ class VSCController implements IController
 
         while (true) {
 
-            var commandLine = null;
+          var commandLine:String = null;
 
             commandLine = Thread.readMessage(true); //StringTools.trim(input.readLine());
+            log("VSCC got commandLine: "+commandLine);
 
             //}
             //catch (e : haxe.io.Eof) {
@@ -109,6 +110,8 @@ class VSCController implements IController
 
     public function acceptMessage(message : Message)
     {
+      // VSCHaxeServer actually passes messages back to vschxcppdb, not here
+
         switch (message) {
         case ErrorInternal(details):
             log("Debugged thread reported internal error: " + details);
@@ -341,13 +344,6 @@ class VSCController implements IController
                         className + "." + functionName + "() at " +
                         fileName + ":" + lineNumber + ".");
         }
-    }
-    
-    private function exit(regex : EReg) : Null<Command>
-    {
-        log("Exiting.");
-        Sys.exit(0);
-        return null;
     }
 
     private function detach(regex : EReg) : Null<Command>
@@ -836,7 +832,6 @@ class VSCController implements IController
     private function setupRegexHandlers()
     {
         mRegexHandlers = [
-  { r: ~/^(quit|exit)[\s]*$/, h: exit },
   { r: ~/^detach[\s]*$/, h: detach },
   { r: ~/^help()[\s]*$/, h: help },
   { r: ~/^help[\s]+([^\s]*)$/, h: help },

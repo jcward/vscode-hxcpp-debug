@@ -10,6 +10,8 @@ import cpp.vm.Thread;
 import cpp.vm.Deque;
 import cpp.vm.Mutex;
 
+import debugger.IController;
+
 class Main {
   static function main() {
     var log = sys.io.File.append("/tmp/adapter.log", false);
@@ -39,7 +41,12 @@ class DebugAdapter {
   var _runInTerminal:Bool = false;
   var _run_process:Process;
 
+  var _sent_initialized:Bool = false;
+
   var _vsc_haxe_server:Thread;
+  var _debugger_messages:Deque<Message>;
+  var _debugger_commands:Deque<Command>;
+  var _pending_responses:Array<Dynamic>; 
 
   public function new(i:Input, o:Output, log:Output) {
     _input = new AsyncInput(i);
@@ -47,9 +54,15 @@ class DebugAdapter {
     _log = log;
     _log_mutex = new Mutex();
 
+    _debugger_messages = new Deque<Message>();
+    _debugger_commands = new Deque<Command>();
+
+    _pending_responses = [];
+
     while (true) {
       if (_input.hasData()) read_header();
       if (_compile_process!=null) read_compile();
+      if (_run_process!=null) check_messages();
       Sys.sleep(0.05);
     }
   }
@@ -215,10 +228,6 @@ class DebugAdapter {
         send_response(response);
       }
 
-      case "pause": {
-        //{"type":"request","seq":3,"command":"pause","arguments":{"threadId":0}}
-      }
-
       case "setExceptionBreakpoints": {
         //{"type":"request","seq":3,"command":"setExceptionBreakpoints","arguments":{"filters":["uncaught"]}}
         _exception_breakpoints_args = request.arguments;
@@ -239,7 +248,27 @@ class DebugAdapter {
       }
 
       case "disconnect": {
+        // TODO: restart?
         do_disconnect();
+      }
+
+      case "threads": {
+        _debugger_commands.add(WhereAllThreads);
+        _pending_responses.push(response);
+
+        // response.success = true;
+        // send_response(response);
+      }
+
+      // threads
+      // next
+      // stepIn
+      // stepOut
+      // pause
+      // continue
+
+      default: {
+        log("====== UNHANDLED COMMAND: "+command);
       }
     }
   }
@@ -248,13 +277,16 @@ class DebugAdapter {
     log("Starting VSCHaxeServer port 6972...");
     _vsc_haxe_server = Thread.create(start_server);
     _vsc_haxe_server.sendMessage(log);
+    _vsc_haxe_server.sendMessage(_debugger_messages);
+    _vsc_haxe_server.sendMessage(_debugger_commands);
 
     log("Launching application...");
     send_output("Launching application...");
 
     _run_process = start_process(_runCommand, _runPath, _runInTerminal);
 
-    send_event({"event":"initialized"});
+    // Wait for debugger to connect... TODO: timeout?
+    _sent_initialized = false;
   }
 
   function read_compile() {
@@ -352,84 +384,72 @@ class DebugAdapter {
   static function start_server():Void
   {
     var log:String->Void = Thread.readMessage(true);
-    var vschs = new debugger.VSCHaxeServer(log);
+    var messages:Deque<Message> = Thread.readMessage(true);
+    var commands:Deque<Command> = Thread.readMessage(true);
+    var vschs = new debugger.VSCHaxeServer(log, commands, messages);
     // fyi, the above constructor function does not return
   }
 
-}
-
-class AsyncInput {
-  var _data:Deque<Int>;
-  var _closed:Deque<Bool>;
-  var _is_closed:Bool = false;
-
-  public function new(i:Input) {
-    _data = new Deque<Int>();
-    _closed = new Deque<Bool>();
-    var t = Thread.create(readInput);
-    t.sendMessage(i);
-    t.sendMessage(_data);
-    t.sendMessage(_closed);
-  }
-
-  inline function check_closed():Bool {
-    return _is_closed || (_is_closed=_closed.pop(false)==true);
-  }
-
-  public function isClosed():Bool { return check_closed(); }
-
-  var buffer:Null<Int> = null;
-  public function hasData():Bool // non-blocking
+  function check_messages():Void
   {
-    if (check_closed()) return false;
-    if (buffer!=null) return true;
-    buffer = _data.pop(false);
-    return (buffer!=null);
-  }
+    var message:Message = _debugger_messages.pop(false);
 
-  public function readByte():Int // blocking
-  {
-    var rtn:Int = 0;
-    if (check_closed()) throw new haxe.io.Eof();
-    if (buffer==null) { buffer = _data.pop(true); }
-    rtn = buffer;
-    buffer = null;
-    return rtn;
-  }
+    if (message==null) return;
 
-  public function read(num_bytes:Int):Bytes // blocking
-  {
-    if (check_closed()) throw new haxe.io.Eof();
-    var rtn:Bytes = Bytes.alloc(num_bytes);
-    var ptr:Int = 0;
-    while (ptr<num_bytes) {
-      rtn.set(ptr++, readByte());
-      if (_is_closed) break;
+    log("Got message: "+message);
+
+    // The first OK indicates a connection with the debugger
+    if (message==OK && _sent_initialized == false) {
+      _sent_initialized = true;
+      send_event({"event":"initialized"});
+      return;
     }
-    return rtn;
-  }
 
-  // Thread
-  static var inst = 0;
-  static private function readInput()
-  {
-    var _input:Input = Thread.readMessage(true);
-    var _data:Deque<Int> = Thread.readMessage(true);
-    var _closed:Deque<Bool> = Thread.readMessage(true);
+    switch (message) {
 
-    var mirror = sys.io.File.append("/tmp/input.bin."+(inst++), false);
+    case ThreadStopped(number, frameNumber, className, functionName,
+                       fileName, lineNumber):
+      log("\nThread " + number + " stopped in " +
+          className + "." + functionName + "() at " +
+          fileName + ":" + lineNumber + ".");
 
-    while (true) {
-      var b:Int = 0;
-      try {
-        b = _input.readByte();
-      } catch (e:haxe.io.Eof) {
-        break;
+      send_event({"event":"stopped", "body":{"reason":"breakpoint","threadId":number}});
+
+    case ThreadsWhere(list):
+
+      var threads = [];
+      while (true) {
+        switch (list) {
+        case Terminator:
+          break;
+        case Where(number, status, frameList, next):
+          threads.push({"id":number,"name":"Thread "+number});
+          while (true) {
+            switch (frameList) {
+            case Terminator:
+              break;
+            case Frame(isCurrent, number, className, functionName,
+                       fileName, lineNumber, next):
+            }
+          }
+        }
       }
-      mirror.writeByte(b);
-      _data.add(b);
-    }
 
-    _closed.add(true);
+      log("Checking pending responses:");
+      log(Std.string(_pending_responses));
+
+      var removes = [];
+      for (i in _pending_responses) {
+        if (i.command=="threads") {
+          i.body = threads;
+          i.success = true;
+          send_response(i);
+          removes.push(i);
+        }
+      }
+      for (i in removes) _pending_responses.remove(i);
+
+    default:
+    }
   }
 }
