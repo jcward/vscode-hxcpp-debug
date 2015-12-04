@@ -210,7 +210,6 @@ class DebugAdapter {
         if (compileCommand!=null) {
           log("Compiling...");
           send_output("Compiling...");
-          send_output("Note: not all build log lines come through to vscode console ???");
           _compile_process = start_process(compileCommand, compilePath);
           _compile_stdout = new AsyncInput(_compile_process.stdout);
         } else {
@@ -309,6 +308,7 @@ class DebugAdapter {
 
     //var output = compile_process.stdout.readAll();
     var result = line.toString();
+    result = (~/\x1b\[[0-9;]*m/g).replace(result, "");
 
     if (result.length>0) {
       log(result);
