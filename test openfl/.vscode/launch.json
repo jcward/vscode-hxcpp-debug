@@ -4,13 +4,13 @@
 		{
 //			"runtimeExecutable": "${execPath}",
 			"args": [
-				"compilePath=${workspaceRoot}",
-				"compileCommand=openfl build linux -debug",
+//				"compilePath=${workspaceRoot}",
+//				"compileCommand=openfl build linux -debug",
 				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
 				"runCommand=DisplayingABitmap",
 				"runInTerminal=false"
 			],
-			"name": "Debug mode",
+			"name": "Run",
 			"type": "hxcpp",
 			"request": "launch",
 			"program": "",

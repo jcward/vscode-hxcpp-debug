@@ -62,7 +62,7 @@ class DebugAdapter {
     while (true) {
       if (_input.hasData()) read_header();
       if (_compile_process!=null) read_compile();
-      if (_run_process!=null) check_messages();
+      if (_run_process!=null) check_debugger_messages();
       Sys.sleep(0.05);
     }
   }
@@ -254,9 +254,15 @@ class DebugAdapter {
       case "threads": {
         _debugger_commands.add(WhereAllThreads);
         _pending_responses.push(response);
+      }
 
-        // response.success = true;
-        // send_response(response);
+      case "stackTrace": {
+        var stackFrames = last_threads.stacks[request.arguments.threadId];
+        response.body = {
+          stackFrames:stackFrames
+        }
+        response.success = true;
+        send_response(response);
       }
 
       // threads
@@ -390,7 +396,8 @@ class DebugAdapter {
     // fyi, the above constructor function does not return
   }
 
-  function check_messages():Void
+  var last_threads:Dynamic;
+  function check_debugger_messages():Void
   {
     var message:Message = _debugger_messages.pop(false);
 
@@ -405,6 +412,24 @@ class DebugAdapter {
       return;
     }
 
+    function check_pending(command:String,
+                           handler:Dynamic->Void):Void
+    {
+      var remove:Dynamic = null;
+      for (i in _pending_responses) {
+        if (i.command==command) {
+          remove = i;
+          break;
+        }
+      }
+      if (remove!=null) {
+        log("Found pending: "+remove);
+        _pending_responses.remove(remove);
+        handler(remove);
+        log("Remaining responses: "+_pending_responses.length);
+      }
+    }
+
     switch (message) {
 
     case ThreadStopped(number, frameNumber, className, functionName,
@@ -413,43 +438,106 @@ class DebugAdapter {
           className + "." + functionName + "() at " +
           fileName + ":" + lineNumber + ".");
 
-      send_event({"event":"stopped", "body":{"reason":"breakpoint","threadId":number}});
+      send_event({"event":"stopped", "body":{"reason":"entry","threadId":number}});
 
     case ThreadsWhere(list):
-
-      var threads = [];
+      var threads = []; // TODO: new Array<Thread>();
+      var stacks = new Array<Array<StackFrame>>();
       while (true) {
         switch (list) {
         case Terminator:
           break;
         case Where(number, status, frameList, next):
           threads.push({"id":number,"name":"Thread "+number});
+          var frames = new Array<StackFrame>();
+          stacks.push(frames);
+          //Sys.print("Thread " + number + " (");
+          var isRunning : Bool = false;
+          switch (status) {
+          case Running:
+            //Sys.println("running)");
+            list = next;
+            isRunning = true;
+          case StoppedImmediate:
+            //Sys.println("stopped):");
+          case StoppedBreakpoint(number):
+            //Sys.println("stopped in breakpoint " + number + "):");
+          case StoppedUncaughtException:
+            //Sys.println("uncaught exception):");
+          case StoppedCriticalError(description):
+            //Sys.println("critical error: " + description + "):");
+          }
+          var hasStack = false;
           while (true) {
             switch (frameList) {
             case Terminator:
               break;
             case Frame(isCurrent, number, className, functionName,
                        fileName, lineNumber, next):
+              //Sys.print((isCurrent ? "* " : "  "));
+              //Sys.print(padStringRight(Std.string(number), 5));
+              //Sys.print(" : " + className + "." + functionName +
+              //          "()");
+              //Sys.println(" at " + fileName + ":" + lineNumber);
+              frames.push(StackFrame.lookup(className, functionName, fileName, lineNumber));
+              hasStack = true;
+              frameList = next;
             }
           }
+          if (!hasStack && !isRunning) {
+            //Sys.println("No stack.");
+          }
+          list = next;
         }
       }
 
-      log("Checking pending responses:");
-      log(Std.string(_pending_responses));
-
-      var removes = [];
-      for (i in _pending_responses) {
-        if (i.command=="threads") {
-          i.body = threads;
-          i.success = true;
-          send_response(i);
-          removes.push(i);
-        }
-      }
-      for (i in removes) _pending_responses.remove(i);
+      last_threads = {};
+      last_threads.threads = threads;
+      last_threads.stacks = stacks;
+      check_pending("threads", function(response:Dynamic) {
+        response.body = {threads: threads};
+        response.success = true;
+        send_response(response);
+      });
 
     default:
     }
+  }
+}
+
+class StackFrame {
+
+  static var instances:Array<StackFrame> = [];
+
+  public var name(default, null):String;
+  public var source(default, null):String;
+  public var line(default, null):Int;
+  public var id(default, null):Int;
+
+  function new(cName:String,
+               cSource:String,
+               cLine:Int)
+  {
+    name = cName;
+    source = cSource;
+    line = cLine;
+  }
+
+  public static function lookup(className:String,
+                                functionName:String,
+                                fileName:String,
+                                lineNumber:Int):StackFrame
+  {
+    for (s in instances)
+      if (s.name==className+'.'+functionName &&
+          s.source==fileName &&
+          s.line==lineNumber) return s;
+
+    var s = new StackFrame(className+'.'+functionName,
+                           fileName,
+                           lineNumber);
+    s.id = instances.length;
+    instances.push(s);
+    return s;
   }
 }
