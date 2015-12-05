@@ -128,8 +128,10 @@ class VSCHaxeServer
             // server
             try {
                 while (true) {
+                    var cmd = commandQueue.pop(true);
+                    log("VSCH: got cmd: "+cmd);
                     HaxeProtocol.writeCommand
-                      (socket.output, commandQueue.pop(true));
+                      (socket.output, cmd);
                 }
             }
             catch (e : haxe.io.Eof) {

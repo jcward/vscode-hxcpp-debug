@@ -65,7 +65,7 @@ class AsyncInput {
     var _data:Deque<Int> = Thread.readMessage(true);
     var _closed:Deque<Bool> = Thread.readMessage(true);
 
-    var mirror = sys.io.File.append("/tmp/input.bin."+(inst++), false);
+    //var mirror = sys.io.File.append("/tmp/input.bin."+(inst++), false);
 
     while (true) {
       var b:Int = 0;
@@ -74,7 +74,8 @@ class AsyncInput {
       } catch (e:haxe.io.Eof) {
         break;
       }
-      mirror.writeByte(b);
+      //mirror.writeByte(b);
+      //mirror.flush();
       _data.add(b);
     }
 

@@ -1,0 +1,17 @@
+Content-Length: 124
+
+{"type":"request","seq":1,"command":"initialize","arguments":{"adapterID":"hxcpp","linesStartAt1":true,"pathFormat":"path"}}Content-Length: 443
+
+{"type":"request","seq":2,"command":"launch","arguments":{"args":["runPath=/home/jward/dev/vscode-hxcpp-debug/test openfl/Export/linux64/cpp/bin/","runCommand=DisplayingABitmap","runInTerminal=false"],"name":"Run","type":"hxcpp","request":"launch","program":null,"stopOnEntry":true,"outDir":null,"address":"localhost","cwd":"/home/jward/dev/vscode-hxcpp-debug/test openfl","runtimeExecutable":null,"runtimeArgs":null,"extensionHostData":null}}Content-Length: 165
+
+{"type":"request","seq":3,"command":"setBreakpoints","arguments":{"source":{"path":"/home/jward/dev/vscode-hxcpp-debug/test openfl/Source/Main.hx"},"lines":[17,20]}}Content-Length: 99
+
+{"type":"request","seq":4,"command":"setExceptionBreakpoints","arguments":{"filters":["uncaught"]}}Content-Length: 46
+
+{"type":"request","seq":5,"command":"threads"}Content-Length: 88
+
+{"type":"request","seq":6,"command":"stackTrace","arguments":{"threadId":0,"levels":20}}Content-Length: 71
+
+{"type":"request","seq":7,"command":"scopes","arguments":{"frameId":0}}Content-Length: 86
+
+{"type":"request","seq":8,"command":"variables","arguments":{"variablesReference":18}}

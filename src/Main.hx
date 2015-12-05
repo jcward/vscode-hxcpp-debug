@@ -4,6 +4,8 @@ import haxe.io.Input;
 import haxe.io.Output;
 import haxe.io.Bytes;
 
+import haxe.ds.StringMap;
+
 import sys.io.Process;
 
 import cpp.vm.Thread;
@@ -27,7 +29,7 @@ class Main {
 class DebugAdapter {
   var _input:AsyncInput;
   var _output:Output;
-  var _log:Output;
+  static var _log:Output;
 
   var _init_args:Dynamic;
   var _launch_req:Dynamic;
@@ -60,15 +62,20 @@ class DebugAdapter {
     _pending_responses = [];
 
     while (true) {
-      if (_input.hasData()) read_header();
+      if (_input.hasData() && outstanding_variables==null) read_from_vscode();
       if (_compile_process!=null) read_compile();
       if (_run_process!=null) check_debugger_messages();
       Sys.sleep(0.05);
     }
   }
 
-  var _log_mutex:Mutex;
-  function log(s:String) {
+  static public function do_throw(s:String) {
+    log(s);
+    throw s;
+  }
+
+  static var _log_mutex:Mutex;
+  static public function log(s:String) {
     _log_mutex.acquire();
     _log.writeString(Sys.time()+": "+s+"\n");
     _log.flush();
@@ -96,14 +103,15 @@ class DebugAdapter {
     return args;
   }
 
-  function read_header():Void
+  function read_from_vscode():Void
   {
     var b:Int;
     var line:StringBuf = new StringBuf();
     while ((b=_input.readByte())!=10) {
       if (b!=13) line.addChar(b);
     }
-    log("Read header line:\n"+line.toString());    
+
+    // Read header
     var values = line.toString().split(':');
     if (values[0]=="Content-Length") {
       burn_blank_line();
@@ -257,15 +265,100 @@ class DebugAdapter {
       }
 
       case "stackTrace": {
-        var stackFrames = last_threads.stacks[request.arguments.threadId];
+        var stackFrames = ThreadsStopped.last.thread_stacks[request.arguments.threadId].concat([]);
+        while (stackFrames.length>(request.arguments.levels:Int)) stackFrames.pop();
         response.body = {
-          stackFrames:stackFrames
+          stackFrames:stackFrames.map(StackFrame.toVSCStackFrame)
         }
         response.success = true;
         send_response(response);
       }
 
-      // threads
+      case "scopes": {
+        var frameId = request.arguments.frameId;
+        var frame = ThreadsStopped.last.getStackFrameById(frameId);
+
+        // A scope of locals for each stackFrame
+        response.body = {
+          scopes:[{name:"Locals", variablesReference:frame.variablesReference, expensive:false}]
+        }
+        response.success = true;
+        send_response(response);
+      }
+
+      case "variables": {
+        var ref_idx:Int = request.arguments.variablesReference;
+        var var_ref = ThreadsStopped.last.var_refs[ref_idx];
+
+        if (var_ref==null) {
+          log("variables requested for unknown variablesReference: "+ref_idx);
+          response.success = false;
+          send_response(response);
+          return;
+        }
+
+        var stacks:Array<Array<StackFrame>> = ThreadsStopped.last.thread_stacks;
+        var frame:StackFrame = var_ref.root;
+        var thread_num = ThreadsStopped.last.threadNumForStackFrame(frame);
+        _debugger_commands.add(SetCurrentThread(thread_num));
+
+        log("Setting thread num: "+thread_num+", ref "+ref_idx+" out of "+ThreadsStopped.last.var_refs.length);
+
+        if (Std.is(var_ref, StackFrame)) {
+          //log("variables requested for StackFrame: "+haxe.format.JsonPrinter.print(frame));
+          current_parent = var_ref;
+          _debugger_commands.add(SetFrame(frame.number));
+          _debugger_commands.add(Variables(false));
+          _pending_responses.push(response);
+        } else {
+          current_parent = var_ref;
+          var v:Variable = cast(var_ref);
+          log("sub-variables requested for Variable: "+v.fq_name+":"+v.type);
+          current_fqn = v.fq_name;
+          outstanding_variables_cnt = 0;
+          outstanding_variables = new StringMap<Variable>();
+
+          if (v.type.indexOf("Array")>=0) {
+            var r = ~/>\[(\d+)/;
+            if (r.match(v.type)) {
+              var length = Std.parseInt(r.matched(1));
+              // TODO - max???
+              for (i in 0...length) {
+                _debugger_commands.add(PrintExpression(false, current_fqn+'['+i+']'));
+                outstanding_variables_cnt++;
+                var name:String = i+'';
+                var v = new Variable(name, current_parent, true);
+                outstanding_variables.set(name, v);
+              }
+            } else {
+              // Array, length 0 or unknown
+              current_fqn = null;
+              outstanding_variables_cnt = 0;
+              outstanding_variables = null;
+              response.success = true;
+              response.body = { variables:[] };
+              send_response(response);
+              return;
+            }
+          } else {
+            var params:Array<String> = v.value.split("\n");
+            for (p in params) {
+              var idx = p.indexOf(" : ");
+              if (idx>=0) {
+                var name:String = StringTools.ltrim(p.substr(0, idx));
+                _debugger_commands.add(PrintExpression(false,
+                  current_fqn+'.'+name));
+                outstanding_variables_cnt++;
+                var v = new Variable(name, current_parent);
+                outstanding_variables.set(name, v);
+                log("Creating outstanding named '"+name+"', fq="+v.fq_name);
+              }
+            }
+          }
+          _pending_responses.push(response);
+        }
+      }
+
       // next
       // stepIn
       // stepOut
@@ -396,7 +489,43 @@ class DebugAdapter {
     // fyi, the above constructor function does not return
   }
 
-  var last_threads:Dynamic;
+  var current_parent:IVarRef;
+  var current_fqn:String;
+  var outstanding_variables:StringMap<Variable>;
+  var outstanding_variables_cnt:Int = 0;
+
+  function check_pending(command:String):Dynamic
+  {
+    var remove:Dynamic = null;
+    for (i in _pending_responses) {
+      if (i.command==command) {
+        remove = i;
+        break;
+      }
+    }
+    if (remove!=null) {
+      _pending_responses.remove(remove);
+    }
+    return remove;
+  }
+
+  function check_finished_variables():Void
+  {
+    if (outstanding_variables_cnt==0) {
+      var response:Dynamic = check_pending("variables");
+      var variables = [];
+      for (name in outstanding_variables.keys()) {
+        variables.push(outstanding_variables.get(name));
+      }
+      response.body = { variables: variables.map(Variable.toVSCVariable) };
+
+      outstanding_variables = null;
+      current_fqn = null;
+      response.success = true;
+      send_response(response);
+    }
+  }
+
   function check_debugger_messages():Void
   {
     var message:Message = _debugger_messages.pop(false);
@@ -412,24 +541,6 @@ class DebugAdapter {
       return;
     }
 
-    function check_pending(command:String,
-                           handler:Dynamic->Void):Void
-    {
-      var remove:Dynamic = null;
-      for (i in _pending_responses) {
-        if (i.command==command) {
-          remove = i;
-          break;
-        }
-      }
-      if (remove!=null) {
-        log("Found pending: "+remove);
-        _pending_responses.remove(remove);
-        handler(remove);
-        log("Remaining responses: "+_pending_responses.length);
-      }
-    }
-
     switch (message) {
 
     case ThreadStopped(number, frameNumber, className, functionName,
@@ -441,16 +552,13 @@ class DebugAdapter {
       send_event({"event":"stopped", "body":{"reason":"entry","threadId":number}});
 
     case ThreadsWhere(list):
-      var threads = []; // TODO: new Array<Thread>();
-      var stacks = new Array<Array<StackFrame>>();
+      new ThreadsStopped(); // catches new AppThread(), new StackFrame()
       while (true) {
         switch (list) {
         case Terminator:
           break;
         case Where(number, status, frameList, next):
-          threads.push({"id":number,"name":"Thread "+number});
-          var frames = new Array<StackFrame>();
-          stacks.push(frames);
+          new AppThread(number);
           //Sys.print("Thread " + number + " (");
           var isRunning : Bool = false;
           switch (status) {
@@ -479,7 +587,7 @@ class DebugAdapter {
               //Sys.print(" : " + className + "." + functionName +
               //          "()");
               //Sys.println(" at " + fileName + ":" + lineNumber);
-              frames.push(StackFrame.lookup(className, functionName, fileName, lineNumber));
+              new StackFrame(number, className, functionName, fileName, lineNumber);
               hasStack = true;
               frameList = next;
             }
@@ -491,53 +599,273 @@ class DebugAdapter {
         }
       }
 
-      last_threads = {};
-      last_threads.threads = threads;
-      last_threads.stacks = stacks;
-      check_pending("threads", function(response:Dynamic) {
-        response.body = {threads: threads};
-        response.success = true;
-        send_response(response);
-      });
+      ThreadsStopped.last.var_refs.push(null); // 1-indexed
+      for (thread_stack_frames in ThreadsStopped.last.thread_stacks) {
+        for (stack_frame in thread_stack_frames) {
+          ThreadsStopped.last.var_refs.push(stack_frame);
+          stack_frame.variablesReference = ThreadsStopped.last.var_refs.length-1;
+        }
+      }
+
+      var response:Dynamic = check_pending("threads");
+      response.body = {threads: ThreadsStopped.last.threads.map(AppThread.toVSCThread)};
+      response.success = true;
+      send_response(response);
+
+    // Only occurs when requesting variables (names) from a frame
+    case Variables(list):
+      if (!Std.is(current_parent, StackFrame)) do_throw("Error, current_parent should be a StackFrame!");
+      if (outstanding_variables!=null) do_throw("Error, variables collision!");
+      outstanding_variables = new StringMap<Variable>();
+      outstanding_variables_cnt = 0;
+
+      while (true) {
+        switch (list) {
+        case Terminator:
+          break;
+        case Element(name, next):
+          var v = new Variable(name, current_parent);
+          outstanding_variables.set(name, v);
+          _debugger_commands.add(PrintExpression(false, v.name));
+          list = next;
+          outstanding_variables_cnt++;
+        }
+      }
+
+    case Value(expression, type, value):
+      //Sys.println(expression + " : " + type + " = " + value);
+      if (current_fqn==null) {
+        var v:Variable = outstanding_variables.get(expression);
+        v.assign(type, value);
+        log("Variable: "+v.fq_name+" assigned variablesReference "+v.variablesReference);
+      } else {
+        log("Got FQ["+current_fqn+"] value: "+message);
+        var name = expression.substr(current_fqn.length+1);
+        // TODO: Array, 1]
+        var v:Variable = outstanding_variables.get(name);
+        if (v!=null) {
+          v.assign(type, value);
+        } else {
+          log("Uh oh, didn't find variable named: "+name);
+        }
+      }
+      outstanding_variables_cnt--;
+      check_finished_variables();
+
+    case ErrorEvaluatingExpression(details):
+      //Sys.println(expression + " : " + type + " = " + value);
+      log("Error evaluating expression: "+details);
+      outstanding_variables_cnt--;
+      check_finished_variables();
 
     default:
     }
   }
 }
 
-class StackFrame {
+class StackFrame implements IVarRef {
 
-  static var instances:Array<StackFrame> = [];
+  //static var instances:Array<StackFrame> = [];
 
-  public var name(default, null):String;
-  public var source(default, null):String;
-  public var line(default, null):Int;
+  public var number(default, null):Int;
+  public var className(default, null):String;
+  public var functionName(default, null):String;
+  public var fileName(default, null):String;
+  public var lineNumber(default, null):Int;
   public var id(default, null):Int;
 
-  function new(cName:String,
-               cSource:String,
-               cLine:Int)
+  public var variablesReference(default, default):Int;
+
+  public var parent:IVarRef;
+  public var root(get, null):StackFrame;
+  public function get_root():StackFrame
   {
-    name = cName;
-    source = cSource;
-    line = cLine;
+    return cast(this);
   }
 
-  public static function lookup(className:String,
-                                functionName:String,
-                                fileName:String,
-                                lineNumber:Int):StackFrame
+  public function new(number:Int,
+                      className:String,
+                      functionName:String,
+                      fileName:String,
+                      lineNumber:Int)
   {
-    for (s in instances)
-      if (s.name==className+'.'+functionName &&
-          s.source==fileName &&
-          s.line==lineNumber) return s;
+    this.number = number;
+    this.className = className;
+    this.functionName = functionName;
+    this.fileName = fileName;
+    this.lineNumber = lineNumber;
 
-    var s = new StackFrame(className+'.'+functionName,
-                           fileName,
-                           lineNumber);
-    s.id = instances.length;
-    instances.push(s);
-    return s;
+    root = this;
+
+    this.id = ThreadsStopped.last.register_stack_frame(this);
+  }
+
+  public static function toVSCStackFrame(s:StackFrame):Dynamic
+  {
+    return {
+      name:s.className+'.'+s.functionName,
+      source:s.fileName,
+      line:s.lineNumber,
+      column:0,
+      id:s.id
+    }
+  }
+
+  //public static function lookup(number:Int,
+  //                              className:String,
+  //                              functionName:String,
+  //                              fileName:String,
+  //                              lineNumber:Int):StackFrame
+  //{
+  //  for (s in instances)
+  //    if (s.number==number &&
+  //        s.className==className &&
+  //        s.functionName==functionName &&
+  //        s.fileName==fileName &&
+  //        s.lineNumber==lineNumber) return s;
+  // 
+  //  var s = new StackFrame(number,
+  //                         className,
+  //                         functionName,
+  //                         fileName,
+  //                         lineNumber);
+  //  s.id = instances.length;
+  //  instances.push(s);
+  //  return s;
+  //}
+}
+
+class Variable implements IVarRef {
+
+  public var name(default, null):String;
+  public var value(default, null):String;
+  public var type(default, null):String;
+
+  public var variablesReference(default, null):Int = 0;
+  var is_decimal = false;
+
+  public function new(name:String, parent:IVarRef, decimal:Bool=false) {
+    this.name = name;
+    this.parent = parent;
+    is_decimal = decimal;
+  }
+
+  public var parent:IVarRef;
+  public var root(get, null):StackFrame;
+  public function get_root():StackFrame
+  {
+    var p:IVarRef = parent;
+    while (p.parent!=null) p = p.parent;
+    return cast(p);
+  }
+
+  public var fq_name(get, null):String;
+  public function get_fq_name():String
+  {
+    var fq = name;
+    if (Std.is(parent, Variable)) {
+      fq = cast(parent, Variable).fq_name+(is_decimal ? '['+name+']' : '.'+name);
+    }
+    return fq;
+
+    var parent = parent;
+    while (parent!=null && Std.is(parent, Variable)) {
+      fq = cast(parent, Variable).name+'.'+fq;
+    }
+    return fq;
+  }
+
+  public function assign(type:String, value:String):Void
+  {
+    if (this.type!=null) DebugAdapter.do_throw("Variable can only be assigned once");
+    this.type = type;
+    this.value = value;
+
+    if (SIMPLES.indexOf(type)<0) {
+      ThreadsStopped.last.var_refs.push(this);
+      variablesReference = ThreadsStopped.last.var_refs.length-1;
+    }
+  }
+
+  private static var SIMPLES:Array<String> = ["String", "NULL", "Bool", "Int", "Float",
+                                              "Anonymous", "Function"
+                                             ];
+  public static function toVSCVariable(v:Variable):Dynamic {
+    return {
+      name:v.name,
+      value:v.variablesReference==0 ? (v.value==null ? "--DebugEvalError--" : v.value) : "["+v.type+"]",
+      variablesReference:v.variablesReference
+    };
   }
 }
+
+interface IVarRef {
+  public var parent:IVarRef;
+  public var root(get, null):StackFrame;
+}
+
+class AppThread {
+  public var id:Int;
+  public function new(id:Int) {
+    this.id = id;
+    ThreadsStopped.last.register_app_thread(this);
+  }
+  public static function toVSCThread(t:AppThread) { return { id:t.id, name:"Thread #"+t.id }; }
+}
+
+class ThreadsStopped {
+  public static var last:ThreadsStopped;
+
+  public var threads:Array<AppThread>;
+  public var thread_stacks:Array<Array<StackFrame>>;
+  public var var_refs:Array<IVarRef>;
+
+  public function new()
+  {
+    this.threads = [];
+    this.thread_stacks = [];
+    this.var_refs = [];
+
+    last = this;
+  }
+
+  public function getStackFrameById(frameId:Int):StackFrame
+  {
+    for (stack in thread_stacks) {
+      if (frameId > stack.length) {
+        frameId -= stack.length;
+      } else {
+        return stack[frameId];
+      }
+    }
+    return null;
+  }
+
+  public function threadNumForStackFrame(frame:StackFrame):Int
+  {
+    for (thread_num in 0...threads.length) {
+      for (stack_frame in thread_stacks[thread_num]) {
+        if (frame==stack_frame) {
+          return thread_num;
+        }
+      }
+    }
+    return 0;
+  }
+
+  public function register_app_thread(t:AppThread):Void
+  {
+    threads.push(t);
+    thread_stacks.push(new Array<StackFrame>());
+  }
+
+  private var total_stack_frames:Int = 0;
+  public function register_stack_frame(frame:StackFrame):Int
+  {
+    var val = total_stack_frames++;
+    thread_stacks[thread_stacks.length-1].push(frame);
+    var_refs.push(frame);
+    return val;
+  }
+}
+
