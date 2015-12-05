@@ -44,6 +44,7 @@ class DebugAdapter {
   var _run_process:Process;
 
   var _sent_initialized:Bool = false;
+  var _send_stopped:Array<Int> = [];
 
   var _vsc_haxe_server:Thread;
   var _debugger_messages:Deque<Message>;
@@ -260,8 +261,10 @@ class DebugAdapter {
       }
 
       case "threads": {
-        _debugger_commands.add(WhereAllThreads);
-        _pending_responses.push(response);
+        // ThreadsStopped was just populated by stopped event
+        response.body = {threads: ThreadsStopped.last.threads.map(AppThread.toVSCThread)};
+        response.success = true;
+        send_response(response);
       }
 
       case "stackTrace": {
@@ -572,17 +575,8 @@ class DebugAdapter {
           className + "." + functionName + "() at " +
           fileName + ":" + lineNumber + ".");
 
-      var reason:String = "entry";
-
-      // respond to pause, if it was a pause
-      var response:Dynamic = check_pending("pause");
-      if (response!=null) {
-        reason = "paused";
-        response.success = true;
-        send_response(response);
-      }
-
-      send_event({"event":"stopped", "body":{"reason":reason,"threadId":number}});
+      _debugger_commands.add(WhereAllThreads);
+      _send_stopped.push(number);
 
     case ThreadsWhere(list):
       new ThreadsStopped(); // catches new AppThread(), new StackFrame()
@@ -640,10 +634,22 @@ class DebugAdapter {
         }
       }
 
-      var response:Dynamic = check_pending("threads");
-      response.body = {threads: ThreadsStopped.last.threads.map(AppThread.toVSCThread)};
-      response.success = true;
-      send_response(response);
+      // Respond to pause if there was one, then send stopped event
+      var reason:String = "entry";
+
+      // respond to pause, if it was a pause
+      var response:Dynamic = check_pending("pause");
+      if (response!=null) {
+        reason = "paused";
+        response.success = true;
+        send_response(response);
+      }
+
+      if (_send_stopped.length>0) {
+        for (number in _send_stopped) {
+          send_event({"event":"stopped", "body":{"reason":reason,"threadId":number}});
+        }
+      }
 
     // Only occurs when requesting variables (names) from a frame
     case Variables(list):
