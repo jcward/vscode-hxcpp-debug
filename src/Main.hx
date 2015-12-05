@@ -305,7 +305,7 @@ class DebugAdapter {
         log("Setting thread num: "+thread_num+", ref "+ref_idx+" out of "+ThreadsStopped.last.var_refs.length);
 
         if (Std.is(var_ref, StackFrame)) {
-          //log("variables requested for StackFrame: "+haxe.format.JsonPrinter.print(frame));
+          log("variables requested for StackFrame: "+frame.fileName+':'+frame.lineNumber);
           current_parent = var_ref;
           _debugger_commands.add(SetFrame(frame.number));
           _debugger_commands.add(Variables(false));
@@ -357,6 +357,21 @@ class DebugAdapter {
           }
           _pending_responses.push(response);
         }
+      }
+
+      case "continue": {
+        _debugger_commands.add(Continue(1));
+        _pending_responses.push(response);
+
+        // response.success = true;
+        // _debugger_commands.add(Continue(1));
+        // // TODO: wait for ThreadStarted message
+        // send_response(response);
+      }
+
+      case "pause": {
+        _debugger_commands.add(BreakNow);
+        _pending_responses.push(response);
       }
 
       // next
@@ -543,13 +558,31 @@ class DebugAdapter {
 
     switch (message) {
 
+    case ThreadStarted(number):
+      // respond to continue, if it was a continue
+      var response:Dynamic = check_pending("continue");
+      if (response!=null) {
+        response.success = true;
+        send_response(response);
+      }
+
     case ThreadStopped(number, frameNumber, className, functionName,
                        fileName, lineNumber):
       log("\nThread " + number + " stopped in " +
           className + "." + functionName + "() at " +
           fileName + ":" + lineNumber + ".");
 
-      send_event({"event":"stopped", "body":{"reason":"entry","threadId":number}});
+      var reason:String = "entry";
+
+      // respond to pause, if it was a pause
+      var response:Dynamic = check_pending("pause");
+      if (response!=null) {
+        reason = "paused";
+        response.success = true;
+        send_response(response);
+      }
+
+      send_event({"event":"stopped", "body":{"reason":reason,"threadId":number}});
 
     case ThreadsWhere(list):
       new ThreadsStopped(); // catches new AppThread(), new StackFrame()
