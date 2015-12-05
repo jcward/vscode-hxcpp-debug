@@ -2,15 +2,28 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-//			"runtimeExecutable": "${execPath}",
+			"runtimeExecutable": "${execPath}",
 			"args": [
-//				"compilePath=${workspaceRoot}",
-//				"compileCommand=openfl build linux -debug",
+				"compilePath=${workspaceRoot}",
+				"compileCommand=openfl build linux -debug -DHXCPP_DEBUGGER",
 				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
 				"runCommand=DisplayingABitmap",
 				"runInTerminal=false"
 			],
-			"name": "Run",
+			"name": "Build and debug",
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		},
+		{
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
+				"runCommand=DisplayingABitmap",
+				"runInTerminal=false"
+			],
+			"name": "Debug",
 			"type": "hxcpp",
 			"request": "launch",
 			"program": "",

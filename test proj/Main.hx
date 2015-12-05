@@ -5,11 +5,22 @@ import cpp.vm.Deque;
 import haxe.io.Input;
 import haxe.io.Bytes;
 
+#if debug
+import debugger.HaxeRemote;
+#end
+
 class Main {
   static function main() {
+#if debug
+    new debugger.HaxeRemote(true, "localhost");
+    //new debugger.Local(true);
+#end
+
     var things = [];
     things.push( new Thing() );
     things.push( new Thing() );
+
+    foo();
 
     // var p = new sys.io.Process("haxe", ["build.hxml"]);
     // trace(p.exitCode());
@@ -55,6 +66,12 @@ class Main {
       trace("read: "+i);
       Sys.sleep(1);
     }
+  }
+
+  public static function foo():Void
+  {
+    var myValue = "abcd1234";
+    while(true) { }
   }
 
   public static function async_test():Void

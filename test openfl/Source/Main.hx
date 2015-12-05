@@ -16,6 +16,7 @@ class Main extends Sprite {
 	public function new () {
 #if debug
     new debugger.HaxeRemote(true, "localhost");
+    //new debugger.Local(true);
 #end
 		
 		super ();
