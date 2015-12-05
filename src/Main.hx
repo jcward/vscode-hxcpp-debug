@@ -632,6 +632,9 @@ class DebugAdapter {
         }
       }
 
+      // No variables?
+      if (outstanding_variables_cnt==0) check_finished_variables();
+
     case Value(expression, type, value):
       //Sys.println(expression + " : " + type + " = " + value);
       if (current_fqn==null) {
