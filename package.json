@@ -40,13 +40,7 @@
 
         "configurationAttributes": {
           "launch": {
-            "required": [ "program" ],
             "properties": {
-              "program": {
-                "type": "string",
-                "description": "Workspace relative path to a text file.",
-                "default": "readme.md"
-              },
               "stopOnEntry": {
                 "type": "boolean",
                 "description": "Automatically stop after launch.",
@@ -61,7 +55,6 @@
             "name": "hxcpp-Debug",
             "type": "hxcpp",
             "request": "launch",
-            "program": "readme.md",
             "stopOnEntry": true
           }
         ]

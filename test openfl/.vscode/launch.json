@@ -13,7 +13,6 @@
 			"name": "Build and debug",
 			"type": "hxcpp",
 			"request": "launch",
-			"program": "",
 			"stopOnEntry": true
 		},
 		{
