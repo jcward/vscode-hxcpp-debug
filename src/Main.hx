@@ -16,6 +16,7 @@ import debugger.IController;
 
 class Main {
   static function main() {
+    // new debugger.HaxeRemote(true, "localhost", 7001);
     var log = sys.io.File.append("/tmp/adapter.log", false);
     var input = Sys.stdin();
     if (Sys.args().length>0) {
@@ -196,8 +197,9 @@ class DebugAdapter {
         send_response(response);
       }
       case "launch": {
-        log("Launching...");
         _launch_req = request;
+        StackFrame.proj_dir = _launch_req.arguments.cwd;
+        log("Launching... proj_dir="+StackFrame.proj_dir);
         var compileCommand:String = null;
         var compilePath:String = null;
         for (arg in (_launch_req.arguments.args:Array<String>)) {
@@ -377,6 +379,24 @@ class DebugAdapter {
         _pending_responses.push(response);
       }
 
+      case "next": {
+        _debugger_commands.add(Next(1));
+        response.success = true;
+        send_response(response);
+      }
+
+      case "stepIn": {
+        _debugger_commands.add(Step(1));
+        response.success = true;
+        send_response(response);
+      }
+
+      case "stepOut": {
+        _debugger_commands.add(Finish(1));
+        response.success = true;
+        send_response(response);
+      }
+
       // next
       // stepIn
       // stepOut
@@ -550,16 +570,39 @@ class DebugAdapter {
 
     if (message==null) return;
 
-    log("Got message: "+message);
+    switch (message) {
+    case Files(list):
+      log("Got message: Files(list)");
+    default:
+      // Don't know why -- this hangs on Files messages...
+      log("Got message: "+message);
+    }
 
     // The first OK indicates a connection with the debugger
     if (message==OK && _sent_initialized == false) {
       _sent_initialized = true;
       send_event({"event":"initialized"});
+      _debugger_commands.add(Files);
+      _debugger_commands.add(FilesFullPath);
       return;
     }
 
     switch (message) {
+
+    case Files(list):
+      log("Populating "+(StackFrame.files==null ? "StackFrame.files" : "StackFrame.files_full"));
+      var tgt:Array<String> = StackFrame.files==null ? (StackFrame.files=[]) : (StackFrame.files_full=[]);
+
+      while (true) {
+        switch (list) {
+        case Terminator:
+          break;
+        case Element(name, next):
+          //log("Push: "+name);
+          tgt.push(name);
+          list = next;
+        }
+      }
 
     case ThreadStarted(number):
       // respond to continue, if it was a continue
@@ -742,11 +785,47 @@ class StackFrame implements IVarRef {
     this.id = ThreadsStopped.last.register_stack_frame(this);
   }
 
+  public static var proj_dir:String = "";
+  public static var files:Array<String> = [];
+  public static var files_full:Array<String> = [];
+  private static var _source_map:StringMap<String> = new StringMap<String>();
   public static function toVSCStackFrame(s:StackFrame):Dynamic
   {
+    var source:String = s.fileName;
+    if (!_source_map.exists(source)) {
+      var idx:Int = files.indexOf(source);
+
+      if (idx==-1) {
+        for (ii in 0...files_full.length) {
+          var f = files_full[ii];
+          if (StringTools.endsWith(f, '/'+source)) {
+            idx = ii;
+            break;
+          }
+        }
+      }
+
+      var mapped:String = source;
+      if (idx>=0) {
+        mapped = files_full[idx];
+        DebugAdapter.log("Found "+files_full[idx]+" for "+source);
+      } else {
+        DebugAdapter.log("NOT Found for "+source);
+      }
+
+      //// Strip leading proj_dir
+      //if (proj_dir.length>0 && mapped.indexOf(proj_dir)==0) {
+      //  mapped = mapped.substr(proj_dir.length+1);
+      //}
+
+      _source_map.set(source, mapped);
+    }
+
+    var f = _source_map.get(s.fileName);
+
     return {
       name:s.className+'.'+s.functionName,
-      source:s.fileName,
+      source:{ name:f.substr(f.lastIndexOf('/')), path:f },
       line:s.lineNumber,
       column:0,
       id:s.id
