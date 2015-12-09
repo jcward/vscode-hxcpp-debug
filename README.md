@@ -34,10 +34,10 @@ You will need to update some of the parameters -- these tell the extension how t
 	"runInTerminal=false"
 ```
 
-Your app needs:
-- to include the library (`-lib debugger`)
+Your app needs to:
+- include the library (`-lib debugger`)
 - be compiled in `-debug` mode
-- compiled with `-D HXCPP_DEBUGGER`
+- be compiled with `-D HXCPP_DEBUGGER`
 
 If using OpenFL, add the following to your project.xml file to satisfy the above conditions:
 ```
