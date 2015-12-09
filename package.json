@@ -29,13 +29,13 @@
         "enableBreakpointsFor": { "languageIds": [ "haxe" ] },
 
         "windows": {
-            "program": "./bin/vschxcppdb.exe"
+            "program": "./bin/windows/vschxcppdb.exe"
         },
         "osx": {
-            "program": "./bin/vschxcppdb"
+            "program": "./bin/mac/vschxcppdb"
         },
         "linux": {
-            "program": "./bin/vschxcppdb"
+            "program": "./bin/linux/vschxcppdb"
         },
 
         "configurationAttributes": {
