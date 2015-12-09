@@ -1,7 +1,6 @@
 # vscode-haxe-debug
 
-Installation
-------------
+## Installation
 
 Pre-requisite: download and install [Visual Studio Code](https://code.visualstudio.com/)
 
@@ -14,14 +13,15 @@ Place (or symlink) the `vscode-haxe-debug` folder in your VSCode extensions dire
 
 Note: This extension doesn't provide language support / syntax highlight. For that, install https://github.com/nadako/vscode-haxe in your extensions directory in the same way.
 
-Usage
------
+## Usage
 
+### Prerequisites
 If you haven't already, install the debugger library from git:
 ```
 haxelib git debugger https://github.com/HaxeFoundation/hxcpp-debugger
 ```
 
+### Setup your project
 In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl).
 
 You will need to update some of the parameters -- these tell the extension how to compile and launch your project, for example:
@@ -63,8 +63,7 @@ Select the debugger button on the left (bottom button) and you should see the de
 
 If you do not see these options, ensure your project folder contains a `.vscode/launch.json` file like the samples given above.
 
-Troubleshooting
----------------
+## Troubleshooting
 
 Here are some potential errors you might receive, and how you might resolve them:
 
@@ -72,12 +71,11 @@ Here are some potential errors you might receive, and how you might resolve them
 - **Build and debug fails with COMPILE FAILED error** - ensure the `compileCommand` and `compilePath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project.
 - **The debugger hangs after compiling** - ensure your `runCommand` and `runPath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project. In addition, ensure you've compiled your project in debug mode, included the debugger library, and inserted the `new HaxeRemote()` hunk of code listed above. 
 
-Debug adapter development notes
--------------------------------
+## Debug adapter development notes
 
-VSC documentation: 
+###VSC documentation
 - https://code.visualstudio.com/docs/extensions/example-debuggers
 - https://code.visualstudio.com/docs/extensionAPI/api-debugging
 
-HXCPP debugger:
+###HXCPP debugger
 - Existing CLI debugger: https://github.com/HaxeFoundation/hxcpp-debugger
