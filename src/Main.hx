@@ -34,7 +34,6 @@ class DebugAdapter {
 
   var _init_args:Dynamic;
   var _launch_req:Dynamic;
-  var _exception_breakpoints_args:Dynamic;
 
   var _compile_process:Process;
   var _compile_stdout:AsyncInput;
@@ -198,8 +197,8 @@ class DebugAdapter {
       }
       case "launch": {
         _launch_req = request;
-        StackFrame.proj_dir = _launch_req.arguments.cwd;
-        log("Launching... proj_dir="+StackFrame.proj_dir);
+        SourceFiles.proj_dir = _launch_req.arguments.cwd;
+        log("Launching... proj_dir="+SourceFiles.proj_dir);
         var compileCommand:String = null;
         var compilePath:String = null;
         for (arg in (_launch_req.arguments.args:Array<String>)) {
@@ -238,23 +237,16 @@ class DebugAdapter {
         send_response(response);
       }
 
-      case "setExceptionBreakpoints": {
-        //{"type":"request","seq":3,"command":"setExceptionBreakpoints","arguments":{"filters":["uncaught"]}}
-        _exception_breakpoints_args = request.arguments;
-        response.success = true;
-        send_response(response);
-      }
+      // TODO: implement pause on exceptions on debugger side
+      // case "setExceptionBreakpoints": {
+      //   //{"type":"request","seq":3,"command":"setExceptionBreakpoints","arguments":{"filters":["uncaught"]}}
+      //   _exception_breakpoints_args = request.arguments;
+      //   response.success = true;
+      //   send_response(response);
+      // }
 
       case "setBreakpoints": {
-        //{"type":"request","seq":3,"command":"setBreakpoints","arguments":{"source":{"path":"/home/jward/dev/vscode-hxcpp-debug/test openfl/Source/Main.hx"},"lines":[17]}}
-        // TODO: set breakpoints in hxcpp-debugger
-        response.success = true;
-        var breakpoints = [];
-        for (line in (request.arguments.lines:Array<Int>)) {
-          breakpoints.push({ verified:true, line:line});
-        }
-        response.body = { breakpoints:breakpoints }
-        send_response(response);
+        process_set_breakpoints(request);
       }
 
       case "disconnect": {
@@ -397,16 +389,38 @@ class DebugAdapter {
         send_response(response);
       }
 
-      // next
-      // stepIn
-      // stepOut
-      // pause
-      // continue
+      // evaluate == watch
 
       default: {
         log("====== UNHANDLED COMMAND: "+command);
       }
     }
+  }
+
+  function process_set_breakpoints(request:Dynamic)
+  {
+    var response:Dynamic = {
+      request_seq:request.seq,
+      command:request.command,
+      success:true
+    }
+
+    //{"type":"request","seq":3,"command":"setBreakpoints","arguments":{"source":{"path":"/home/jward/dev/vscode-hxcpp-debug/test openfl/Source/Main.hx"},"lines":[17]}}
+    var file:String = SourceFiles.getDebuggerFilename(request.arguments.source.path);
+    log("Setting breakpoints in:");
+    log(" VSC: "+request.arguments.source.path);
+    log(" DBG: "+file);
+
+    // It doesn't seem hxcpp-debugger corrects/verifies line
+    // numbers, so just pass these back as verified
+    var breakpoints = [];
+    for (line in (request.arguments.lines:Array<Int>)) {
+      _debugger_commands.add(AddFileLineBreakpoint(file, line));
+
+      breakpoints.push({ verified:true, line:line});
+    }
+    response.body = { breakpoints:breakpoints }
+    send_response(response);
   }
 
   function do_run() {
@@ -506,7 +520,7 @@ class DebugAdapter {
     cmd = args.shift();
 
     // TODO: file separator for windows? Maybe not necessary for windows
-    // as ./ is in the PATH by default?
+    // as ./ is in the PATH by default? if !windows perhaps
     if (sys.FileSystem.exists(path+'/'+cmd)) {
       log("Setting ./ prefix");
       cmd = "./"+cmd;
@@ -581,7 +595,6 @@ class DebugAdapter {
     // The first OK indicates a connection with the debugger
     if (message==OK && _sent_initialized == false) {
       _sent_initialized = true;
-      send_event({"event":"initialized"});
       _debugger_commands.add(Files);
       _debugger_commands.add(FilesFullPath);
       return;
@@ -590,18 +603,28 @@ class DebugAdapter {
     switch (message) {
 
     case Files(list):
-      log("Populating "+(StackFrame.files==null ? "StackFrame.files" : "StackFrame.files_full"));
-      var tgt:Array<String> = StackFrame.files==null ? (StackFrame.files=[]) : (StackFrame.files_full=[]);
+      log("Populating "+(SourceFiles.files==null ? "SourceFiles.files" : "SourceFiles.files_full"));
+      var tgt:Array<String>;
+      if (SourceFiles.files==null) {
+        tgt = SourceFiles.files = [];
+      } else {
+        tgt = SourceFiles.files_full = [];
+      }
 
       while (true) {
         switch (list) {
         case Terminator:
           break;
         case Element(name, next):
-          //log("Push: "+name);
+          if (name.indexOf("Main.hx")>=0) log("Push: "+name);
           tgt.push(name);
           list = next;
         }
+      }
+
+      // Send initialized after files have been queried
+      if (tgt==SourceFiles.files_full) {
+        send_event({"event":"initialized"});
       }
 
     case ThreadStarted(number):
@@ -743,7 +766,11 @@ class DebugAdapter {
       outstanding_variables_cnt--;
       check_finished_variables();
 
+    case FileLineBreakpointNumber(number):
+      log("Breakpoint " + number + " set and enabled.");
+
     default:
+      log("====== UNHANDLED MESSAGE: "+message);
     }
   }
 }
@@ -785,19 +812,34 @@ class StackFrame implements IVarRef {
     this.id = ThreadsStopped.last.register_stack_frame(this);
   }
 
-  public static var proj_dir:String = "";
-  public static var files:Array<String> = [];
-  public static var files_full:Array<String> = [];
-  private static var _source_map:StringMap<String> = new StringMap<String>();
   public static function toVSCStackFrame(s:StackFrame):Dynamic
   {
-    var source:String = s.fileName;
+
+    // TODO: windows separator?
+    return {
+      name:s.className+'.'+s.functionName,
+      source:SourceFiles.getVSCSource(s.fileName),
+      line:s.lineNumber,
+      column:0,
+      id:s.id
+    }
+  }
+}
+
+class SourceFiles {
+
+  public static var proj_dir:String = "";
+  public static var files:Array<String> = null;
+  public static var files_full:Array<String> = null;
+  private static var _source_map:StringMap<String> = new StringMap<String>();
+
+  public static function getVSCSource(source:String):Dynamic {
     if (!_source_map.exists(source)) {
       var idx:Int = files.indexOf(source);
 
       if (idx==-1) {
         for (ii in 0...files_full.length) {
-          var f = files_full[ii];
+          var f = files_full[ii]; // TODO: windows separator?
           if (StringTools.endsWith(f, '/'+source)) {
             idx = ii;
             break;
@@ -813,47 +855,40 @@ class StackFrame implements IVarRef {
         DebugAdapter.log("NOT Found for "+source);
       }
 
-      //// Strip leading proj_dir
-      //if (proj_dir.length>0 && mapped.indexOf(proj_dir)==0) {
-      //  mapped = mapped.substr(proj_dir.length+1);
-      //}
-
       _source_map.set(source, mapped);
     }
 
-    var f = _source_map.get(s.fileName);
+    var f = _source_map.get(source);
 
-    return {
-      name:s.className+'.'+s.functionName,
-      source:{ name:f.substr(f.lastIndexOf('/')), path:f },
-      line:s.lineNumber,
-      column:0,
-      id:s.id
-    }
+    // { name:fileName, path:absPath }
+    // TODO: windows separator
+    return { name:f.substr(f.lastIndexOf('/')), path:f };
   }
 
-  //public static function lookup(number:Int,
-  //                              className:String,
-  //                              functionName:String,
-  //                              fileName:String,
-  //                              lineNumber:Int):StackFrame
-  //{
-  //  for (s in instances)
-  //    if (s.number==number &&
-  //        s.className==className &&
-  //        s.functionName==functionName &&
-  //        s.fileName==fileName &&
-  //        s.lineNumber==lineNumber) return s;
-  // 
-  //  var s = new StackFrame(number,
-  //                         className,
-  //                         functionName,
-  //                         fileName,
-  //                         lineNumber);
-  //  s.id = instances.length;
-  //  instances.push(s);
-  //  return s;
-  //}
+  private static var _back_map:StringMap<String> = new StringMap<String>();
+  public static function getDebuggerFilename(vsc_filename:String):String
+  {
+    // TODO: this may not handle symlinks, as the debugger's full paths
+    // have symlinks expanded.
+
+    // Convert full path to the files[i] equivalent
+    if (!_back_map.exists(vsc_filename)) {
+      var idx:Int = files_full.indexOf(vsc_filename);
+      DebugAdapter.log("Full "+idx+" is "+vsc_filename);
+      //if (idx==-1) {
+      //  for (ii in 0...files_full.length) {
+      //    var f = files_full[ii]; // TODO: windows separator?
+      //    if (StringTools.endsWith(f, '/'+vsc_filename)) {
+      //      idx = ii;
+      //      break;
+      //    }
+      //  }
+      //}
+
+      _back_map.set(vsc_filename, idx>=0 ? files[idx] : vsc_filename);
+    }
+    return _back_map.get(vsc_filename);
+  }
 }
 
 class Variable implements IVarRef {
