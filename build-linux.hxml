@@ -1,0 +1,5 @@
+-cp src
+-main Main
+-cpp bin/linux
+-lib debugger
+-cmd "mv bin/linux/Main bin/linux/vschxcppdb"

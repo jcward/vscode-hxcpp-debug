@@ -12,13 +12,15 @@ import debugger.HaxeRemote;
 class Main {
   static function main() {
 #if debug
-    new debugger.HaxeRemote(true, "localhost");
-    //new debugger.Local(true);
+    //new debugger.HaxeRemote(true, "localhost");
+    new debugger.Local(true);
 #end
 
-    var things = [];
-    things.push( new Thing() );
-    things.push( new Thing() );
+    var abcd:String = null;
+    trace(abcd.length); // 0 ???
+
+    var abcd:Array<Dynamic> = [];
+    trace(abcd[3].length); // Null Object Exception
 
     foo();
 
@@ -59,7 +61,7 @@ class Main {
     // }
     // trace("Exit code: "+p.exitCode());
 
-    async_test();
+    // async_test();
 
     while (true) {
       var i = Sys.getChar(true);
@@ -68,7 +70,18 @@ class Main {
     }
   }
 
-  public static function foo():Void
+  static function test_things() {
+    var things = [];
+    things.push( new Thing() );
+    things.push( new Thing() );
+    trace(things);
+
+    trace("..."); // test break, change things
+
+    trace(things);
+  }
+
+  public static function wont_pause_issue_12():Void
   {
     var myValue = "abcd1234";
     while(true) { }

@@ -7,7 +7,8 @@
 				"compilePath=${workspaceRoot}",
 				"compileCommand=haxe build\\ proj.hxml",
 				"runPath=${workspaceRoot}/export",
-				"runCommand=Main-debug"
+				"runCommand=Main-debug",
+				"runInTerminal=true"
 			],
 			"name": "Debug mode",
 			"type": "hxcpp",
