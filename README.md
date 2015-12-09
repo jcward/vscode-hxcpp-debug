@@ -55,15 +55,17 @@ Select the debugger button on the left (bottom button) and you should see the de
 
 If you do not see these options, ensure your project folder contains a `.vscode/launch.json` file like the samples given above.
 
-Potential error conditions
---------------------------
+Troubleshooting
+---------------
+
+Here are some potential errors you might receive, and how you might resolve them:
 
 - **Configured debug type 'hxcpp' is not supported** - the extension is not properly installed in your `.vscode/extensions` directory. Ensure the `vscode-hxcpp-debug` directory is there, and contains the package.json file. Try restarting VSCode.
 - **Build and debug fails with COMPILE FAILED error** - ensure the `compileCommand` and `compilePath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project.
 - **The debugger hangs after compiling** - ensure your `runCommand` and `runPath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project. In addition, ensure you've compiled your project in debug mode, included the debugger library, and inserted the `new HaxeRemote()` hunk of code listed above. 
 
-Development notes
------------------
+Debug adapter development notes
+-------------------------------
 
 VSC documentation: 
 - https://code.visualstudio.com/docs/extensions/example-debuggers
@@ -71,5 +73,3 @@ VSC documentation:
 
 HXCPP debugger:
 - Existing CLI debugger: https://github.com/HaxeFoundation/hxcpp-debugger
-
-Dan's haxe extension: https://github.com/nadako/vscode-haxe
