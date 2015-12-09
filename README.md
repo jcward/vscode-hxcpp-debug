@@ -22,11 +22,13 @@ If you haven't already, install the debugger library from git:
 haxelib git debugger https://github.com/HaxeFoundation/hxcpp-debugger
 ```
 
-In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl). You may need to update some of the parameters -- these tell the extension how to compile and launch your project:
+In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl).
+
+You will need to update some of the parameters -- these tell the extension how to compile and launch your project, for example:
 
 ```
 	"compilePath=${workspaceRoot}",
-	"compileCommand=openfl build linux -debug -DHXCPP_DEBUGGER",
+	"compileCommand=openfl build windows -debug -DHXCPP_DEBUGGER",
 	"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
 	"runCommand=DisplayingABitmap",
 	"runInTerminal=false"
@@ -36,6 +38,12 @@ Your app needs:
 - to include the library (`-lib debugger`)
 - be compiled in `-debug` mode
 - compiled with `-D HXCPP_DEBUGGER`
+
+If using OpenFL, add the following to your project.xml file to satisfy the above conditions:
+```
+	<haxelib name="debugger" if="debug" />
+	<haxedef name="HXCPP_DEBUGGER" if="debug"/>
+```
 
 Near the entry point of your app, add the following code:
 
