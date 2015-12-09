@@ -508,6 +508,9 @@ class DebugAdapter {
   {
     var old:String = null;
     if (in_terminal) {
+      // TODO: windows open in terminal? start? cmd? something...
+      // TODO: mac open in terminal? start? cmd? something...
+      // TODO: optional terminal command (for non-gnome-terminal)
       cmd = "gnome-terminal --working-directory="+path.split(" ").join('\\ ')+" -x ./"+cmd.split(" ").join('\\ ');
     } else {
       old = Sys.getCwd();
@@ -519,12 +522,15 @@ class DebugAdapter {
     var display = args.join(" ");
     cmd = args.shift();
 
-    // TODO: file separator for windows? Maybe not necessary for windows
-    // as ./ is in the PATH by default? if !windows perhaps
-    if (sys.FileSystem.exists(path+'/'+cmd)) {
+    // ./ as current directory isn't typically in PATH
+    // Shouldn't be necessary for windows as the current directory
+    // is in the PATH by default... I think.
+#if (!windows)
+    if (sys.FileSystem.exists(path+SourceFiles.SEPARATOR+cmd)) {
       log("Setting ./ prefix");
       cmd = "./"+cmd;
     }
+#end
 
     var proc = new sys.io.Process(cmd, args);
     log("Starting: "+display+", pid="+proc.getPid());
@@ -828,6 +834,12 @@ class StackFrame implements IVarRef {
 
 class SourceFiles {
 
+#if windows
+  static public var SEPARATOR:String = "\\";
+#else
+  static public var SEPARATOR:String = '/';
+#end
+
   public static var proj_dir:String = "";
   public static var files:Array<String> = null;
   public static var files_full:Array<String> = null;
@@ -840,7 +852,7 @@ class SourceFiles {
       if (idx==-1) {
         for (ii in 0...files_full.length) {
           var f = files_full[ii]; // TODO: windows separator?
-          if (StringTools.endsWith(f, '/'+source)) {
+          if (StringTools.endsWith(f, SourceFiles.SEPARATOR+source)) {
             idx = ii;
             break;
           }
@@ -861,8 +873,7 @@ class SourceFiles {
     var f = _source_map.get(source);
 
     // { name:fileName, path:absPath }
-    // TODO: windows separator
-    return { name:f.substr(f.lastIndexOf('/')), path:f };
+    return { name:f.substr(f.lastIndexOf(SEPARATOR)), path:f };
   }
 
   private static var _back_map:StringMap<String> = new StringMap<String>();
@@ -874,17 +885,6 @@ class SourceFiles {
     // Convert full path to the files[i] equivalent
     if (!_back_map.exists(vsc_filename)) {
       var idx:Int = files_full.indexOf(vsc_filename);
-      DebugAdapter.log("Full "+idx+" is "+vsc_filename);
-      //if (idx==-1) {
-      //  for (ii in 0...files_full.length) {
-      //    var f = files_full[ii]; // TODO: windows separator?
-      //    if (StringTools.endsWith(f, '/'+vsc_filename)) {
-      //      idx = ii;
-      //      break;
-      //    }
-      //  }
-      //}
-
       _back_map.set(vsc_filename, idx>=0 ? files[idx] : vsc_filename);
     }
     return _back_map.get(vsc_filename);
