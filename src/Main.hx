@@ -664,6 +664,12 @@ class DebugAdapter {
       _debugger_commands.add(WhereAllThreads);
       _send_stopped.push(number);
 
+    // WIP: asks threads, replies with just #0
+    //case ThreadCreated(number):
+    //  log("Thread " + number + " created.");
+    //  send_output("Thread " + number + " created.");
+    //  send_event({"event":"thread", "body":{"reason":"started","threadId":number}});
+
     case ThreadsWhere(list):
       new ThreadsStopped(); // catches new AppThread(), new StackFrame()
       while (true) {

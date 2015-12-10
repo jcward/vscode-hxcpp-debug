@@ -12,15 +12,15 @@ import debugger.HaxeRemote;
 class Main {
   static function main() {
 #if debug
-    new debugger.HaxeRemote(true, "localhost");
-    //new debugger.Local(true);
+    //new debugger.HaxeRemote(true, "localhost");
+    new debugger.Local(true);
 #end
 
     // var abcd:String = null;
     // trace(abcd.length); // 0 ???
 
-    var abcd:Array<Dynamic> = [];
-    trace(abcd[3].length); // Null Object Exception
+    // var abcd:Array<Dynamic> = [];
+    // trace(abcd[3].length); // Null Object Exception
 
     // var p = new sys.io.Process("haxe", ["build.hxml"]);
     // trace(p.exitCode());
@@ -59,13 +59,31 @@ class Main {
     // }
     // trace("Exit code: "+p.exitCode());
 
-    // async_test();
+    //async_test();
 
-    while (true) {
-      var i = Sys.getChar(true);
-      trace("read: "+i);
-      Sys.sleep(1);
+    thread_test();
+
+    // while (true) {
+    //   var i = Sys.getChar(true);
+    //   trace("read: "+i);
+    //   Sys.sleep(1);
+    // }
+  }
+
+  static function thread_test() {
+    Thread.create(thread_test);
+    Thread.create(thread_test);
+    thread_test_int();
+  }
+
+  static function thread_test_int() {
+    trace("In thread...");
+    var a = 0;
+    for (i in 0...200) {
+      Sys.sleep(0.1);
+      a += i;
     }
+    trace("Leaving thread. a="+a);
   }
 
   static function test_things() {
