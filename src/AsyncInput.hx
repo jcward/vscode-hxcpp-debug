@@ -20,8 +20,16 @@ class AsyncInput {
     t.sendMessage(_closed);
   }
 
+  inline function is_data_empty():Bool {
+    if (_is_closed) return true;
+    if (buffer!=null) return false;
+    buffer = _data.pop(false);
+    return buffer==null;
+  }
+
   inline function check_closed():Bool {
-    return _is_closed || (_is_closed=_closed.pop(false)==true);
+    if (!is_data_empty()) return false;
+    return _is_closed || (_is_closed = _closed.pop(false)==true);
   }
 
   public function isClosed():Bool { return check_closed(); }
@@ -29,9 +37,7 @@ class AsyncInput {
   var buffer:Null<Int> = null;
   public function hasData():Bool // non-blocking
   {
-    if (check_closed()) return false;
-    if (buffer!=null) return true;
-    buffer = _data.pop(false);
+    if (is_data_empty()) return false; // checks closed, loads buffer
     return (buffer!=null);
   }
 
@@ -39,7 +45,7 @@ class AsyncInput {
   {
     var rtn:Int = 0;
     if (check_closed()) throw new haxe.io.Eof();
-    if (buffer==null) { buffer = _data.pop(true); }
+    if (buffer==null) { buffer = _data.pop(true); } // blocking
     rtn = buffer;
     buffer = null;
     return rtn;
@@ -52,7 +58,7 @@ class AsyncInput {
     var ptr:Int = 0;
     while (ptr<num_bytes) {
       rtn.set(ptr++, readByte());
-      if (_is_closed) break;
+      if (_is_closed) break; // should throw? or return partial data?
     }
     return rtn;
   }
@@ -64,7 +70,6 @@ class AsyncInput {
     var _input:Input = Thread.readMessage(true);
     var _data:Deque<Int> = Thread.readMessage(true);
     var _closed:Deque<Bool> = Thread.readMessage(true);
-
     //var mirror = sys.io.File.append("/tmp/input.bin."+(inst++), false);
 
     while (true) {
