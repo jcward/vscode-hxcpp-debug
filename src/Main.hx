@@ -37,6 +37,7 @@ class DebugAdapter {
 
   var _compile_process:Process;
   var _compile_stdout:AsyncInput;
+  var _compile_stderr:AsyncInput;
 
   var _runCommand:String = null;
   var _runPath:String = null;
@@ -222,6 +223,7 @@ class DebugAdapter {
           send_output("Compiling...");
           _compile_process = start_process(compileCommand, compilePath);
           _compile_stdout = new AsyncInput(_compile_process.stdout);
+          _compile_stderr = new AsyncInput(_compile_process.stderr);
         } else {
           if (_runCommand!=null) {
             do_run();
@@ -251,7 +253,9 @@ class DebugAdapter {
 
       case "disconnect": {
         // TODO: restart?
-        do_disconnect();
+        response.success = true;
+        send_response(response);
+        do_disconnect(false);
       }
 
       case "threads": {
@@ -442,11 +446,18 @@ class DebugAdapter {
   function read_compile() {
     // TODO: non-blocking compile process, send stdout as we receive it,
     // handle disconnect
- 
-    // Blocks until complete:
 
     var line:StringBuf = new StringBuf();
     var compile_finished:Bool = false;
+
+    while (_compile_stderr.hasData()) {
+      try {
+        line.addChar(_compile_stderr.readByte());
+      } catch (e : haxe.io.Eof) {
+        break;
+      }
+    }
+
     while (_compile_stdout.hasData()) {
       try {
         line.addChar(_compile_stdout.readByte());
@@ -462,16 +473,18 @@ class DebugAdapter {
     result = (~/\x1b\[[0-9;]*m/g).replace(result, "");
 
     if (result.length>0) {
-      log(result);
+      log("Compiler: "+result);
       send_output(result, 'console', false);
     }
 
     if (compile_finished) {
+
       var success = _compile_process.exitCode()==0;
       log("Compile "+(success ? "succeeded!" : "FAILED!"));
       send_output("Compile "+(success ? "succeeded!" : "FAILED!"));
       _compile_process = null;
       _compile_stdout = null;
+      _compile_stderr = null;
 
       if (success) {
         do_run();
@@ -482,7 +495,7 @@ class DebugAdapter {
 
   }
 
-  function do_disconnect(send_message:Bool=false):Void
+  function do_disconnect(send_exited:Bool=true):Void
   {
     if (_run_process!=null) {
       log("Killing _run_process");
@@ -496,10 +509,10 @@ class DebugAdapter {
       _compile_process.kill(); // TODO, this is not closing the process
       _compile_process = null;
     }
-    if (send_message) {
-      log("Sending disconnect message to VSCode");
-      send_response({"type":"request","seq":1,"command":"disconnect","arguments":{"extensionHostData":{"restart":false}}});
-    }
+    if (send_exited) {
+      log("Sending exited event to VSCode");
+      send_event({"event":"terminated"});
+    } // else { hmm, is there a disconnect event we can send? }
     log("Disconnecting...");
     Sys.exit(0);
   }
@@ -628,7 +641,8 @@ class DebugAdapter {
         }
       }
 
-      // Send initialized after files have been queried
+      // Send initialized after files have been queried, ready to
+      // accept breakpoints
       if (tgt==SourceFiles.files_full) {
         send_event({"event":"initialized"});
       }
