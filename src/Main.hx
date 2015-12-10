@@ -672,21 +672,25 @@ class DebugAdapter {
           break;
         case Where(number, status, frameList, next):
           new AppThread(number);
-          //Sys.print("Thread " + number + " (");
+          var reason:String = "";
+          var report_reason:Bool = false;
+          reason += ("Thread " + number + " (");
           var isRunning : Bool = false;
           switch (status) {
           case Running:
-            //Sys.println("running)");
+            reason += ("running)\n");
             list = next;
             isRunning = true;
           case StoppedImmediate:
-            //Sys.println("stopped):");
+            reason += ("stopped):\n");
           case StoppedBreakpoint(number):
-            //Sys.println("stopped in breakpoint " + number + "):");
+            reason += ("stopped in breakpoint " + number + "):\n");
           case StoppedUncaughtException:
-            //Sys.println("uncaught exception):");
+            reason += ("uncaught exception):\n");
+            report_reason = true;
           case StoppedCriticalError(description):
-            //Sys.println("critical error: " + description + "):");
+            reason += ("critical error: " + description + "):\n");
+            report_reason = true;
           }
           var hasStack = false;
           while (true) {
@@ -695,18 +699,22 @@ class DebugAdapter {
               break;
             case Frame(isCurrent, number, className, functionName,
                        fileName, lineNumber, next):
-              //Sys.print((isCurrent ? "* " : "  "));
-              //Sys.print(padStringRight(Std.string(number), 5));
-              //Sys.print(" : " + className + "." + functionName +
-              //          "()");
-              //Sys.println(" at " + fileName + ":" + lineNumber);
+              reason += ((isCurrent ? "* " : "  "));
+              reason += (padStringRight(Std.string(number), 5));
+              reason += (" : " + className + "." + functionName +
+                         "()");
+              reason += (" at " + fileName + ":" + lineNumber + "\n");
               new StackFrame(number, className, functionName, fileName, lineNumber);
               hasStack = true;
               frameList = next;
             }
           }
           if (!hasStack && !isRunning) {
-            //Sys.println("No stack.");
+            reason += ("No stack.\n");
+          }
+          if (report_reason) {
+            log(StringTools.rtrim(reason));
+            send_output(StringTools.rtrim(reason));
           }
           list = next;
         }
@@ -793,6 +801,27 @@ class DebugAdapter {
       log("====== UNHANDLED MESSAGE: "+message);
     }
   }
+
+  private static function padStringRight(str : String, width : Int)
+  {
+    var spacesNeeded = width - str.length;
+
+    if (spacesNeeded <= 0) {
+      return str;
+    }
+
+    if (gEmptySpace[spacesNeeded] == null) {
+      var str = "";
+      for (i in 0...spacesNeeded) {
+        str += " ";
+      }
+      gEmptySpace[spacesNeeded] = str;
+    }
+
+    return (gEmptySpace[spacesNeeded] + str);
+  }
+  private static var gEmptySpace : Array<String> = [ "" ];
+
 }
 
 class StackFrame implements IVarRef {

@@ -12,17 +12,15 @@ import debugger.HaxeRemote;
 class Main {
   static function main() {
 #if debug
-    //new debugger.HaxeRemote(true, "localhost");
-    new debugger.Local(true);
+    new debugger.HaxeRemote(true, "localhost");
+    //new debugger.Local(true);
 #end
 
-    var abcd:String = null;
-    trace(abcd.length); // 0 ???
+    // var abcd:String = null;
+    // trace(abcd.length); // 0 ???
 
     var abcd:Array<Dynamic> = [];
     trace(abcd[3].length); // Null Object Exception
-
-    foo();
 
     // var p = new sys.io.Process("haxe", ["build.hxml"]);
     // trace(p.exitCode());
