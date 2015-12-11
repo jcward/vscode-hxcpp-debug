@@ -5,6 +5,7 @@ import haxe.io.Output;
 import haxe.io.Bytes;
 
 import haxe.ds.StringMap;
+import haxe.ds.IntMap;
 
 import sys.io.Process;
 
@@ -259,14 +260,15 @@ class DebugAdapter {
       }
 
       case "threads": {
-        // ThreadsStopped was just populated by stopped event
-        response.body = {threads: ThreadsStopped.last.threads.map(AppThread.toVSCThread)};
+        // ThreadStatus was just populated by stopped event
+        //response.body = {threads: ThreadStatus.last.threads.map(AppThread.toVSCThread)};
+        response.body = {threads: ThreadStatus.live_threads.map(AppThread.idToVSCThread)};
         response.success = true;
         send_response(response);
       }
 
       case "stackTrace": {
-        var stackFrames = ThreadsStopped.last.thread_stacks[request.arguments.threadId].concat([]);
+        var stackFrames = ThreadStatus.by_id(request.arguments.threadId).stack_frames.concat([]);
         while (stackFrames.length>(request.arguments.levels:Int)) stackFrames.pop();
         response.body = {
           stackFrames:stackFrames.map(StackFrame.toVSCStackFrame)
@@ -277,7 +279,7 @@ class DebugAdapter {
 
       case "scopes": {
         var frameId = request.arguments.frameId;
-        var frame = ThreadsStopped.last.getStackFrameById(frameId);
+        var frame = ThreadStatus.getStackFrameById(frameId);
 
         // A scope of locals for each stackFrame
         response.body = {
@@ -289,7 +291,7 @@ class DebugAdapter {
 
       case "variables": {
         var ref_idx:Int = request.arguments.variablesReference;
-        var var_ref = ThreadsStopped.last.var_refs[ref_idx];
+        var var_ref = ThreadStatus.var_refs[ref_idx];
 
         if (var_ref==null) {
           log("variables requested for unknown variablesReference: "+ref_idx);
@@ -298,12 +300,11 @@ class DebugAdapter {
           return;
         }
 
-        var stacks:Array<Array<StackFrame>> = ThreadsStopped.last.thread_stacks;
         var frame:StackFrame = var_ref.root;
-        var thread_num = ThreadsStopped.last.threadNumForStackFrame(frame);
+        var thread_num = ThreadStatus.threadNumForStackFrameId(frame.id);
         _debugger_commands.add(SetCurrentThread(thread_num));
 
-        log("Setting thread num: "+thread_num+", ref "+ref_idx+" out of "+ThreadsStopped.last.var_refs.length);
+        log("Setting thread num: "+thread_num+", ref "+ref_idx+" out of "+ThreadStatus.var_refs.length);
 
         if (Std.is(var_ref, StackFrame)) {
           log("variables requested for StackFrame: "+frame.fileName+':'+frame.lineNumber);
@@ -565,6 +566,16 @@ class DebugAdapter {
   var outstanding_variables:StringMap<Variable>;
   var outstanding_variables_cnt:Int = 0;
 
+  function has_pending(command:String):Bool
+  {
+    for (i in _pending_responses) {
+      if (i.command==command) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function check_pending(command:String):Dynamic
   {
     var remove:Dynamic = null;
@@ -605,9 +616,12 @@ class DebugAdapter {
 
     switch (message) {
     case Files(list):
-      log("Got message: Files(list)");
+      // Don't know why -- it hangs printing this message
+      log("Got message: Files(...)");
+    case Value(expression, type, value):
+      // Too verbose, just expression and type
+      log("Got message: Value("+expression+", "+type+", ...)");
     default:
-      // Don't know why -- this hangs on Files messages...
       log("Got message: "+message);
     }
 
@@ -661,23 +675,46 @@ class DebugAdapter {
           className + "." + functionName + "() at " +
           fileName + ":" + lineNumber + ".");
 
-      _debugger_commands.add(WhereAllThreads);
+    //_debugger_commands.add(WhereAllThreads);
+      _debugger_commands.add(SetCurrentThread(number));
+      _debugger_commands.add(WhereCurrentThread(false));
       _send_stopped.push(number);
 
-    // WIP: asks threads, replies with just #0
-    //case ThreadCreated(number):
-    //  log("Thread " + number + " created.");
-    //  send_output("Thread " + number + " created.");
-    //  send_event({"event":"thread", "body":{"reason":"started","threadId":number}});
+    case ThreadCreated(number):
+      log("Thread " + number + " created.");
+      if (ThreadStatus.live_threads.indexOf(number)>=0) {
+        DebugAdapter.log("Error, thread "+number+" already exists");
+      }
+      ThreadStatus.live_threads.push(number);
+      send_output("Thread " + number + " created.");
+      send_event({"event":"thread", "body":{"reason":"started","threadId":number}});
+
+    case ThreadTerminated(number):
+      log("Thread " + number + " terminated.");
+      if (ThreadStatus.live_threads.indexOf(number)<0) {
+        DebugAdapter.log("Error, thread "+number+" doesn't exist");
+      }
+      ThreadStatus.live_threads.remove(number);
+      send_output("Thread " + number + " terminated.");
+      send_event({"event":"thread", "body":{"reason":"exited","threadId":number}});
 
     case ThreadsWhere(list):
-      new ThreadsStopped(); // catches new AppThread(), new StackFrame()
+      new ThreadStatus(); // catches new AppThread(), new StackFrame()
       while (true) {
         switch (list) {
         case Terminator:
           break;
         case Where(number, status, frameList, next):
-          new AppThread(number);
+          var t = new AppThread(number);
+
+          // Respond to pause if there was one, then send stopped event
+          var ssidx = _send_stopped.indexOf(number);
+          if (ssidx>=0) {
+            var stop_reason:String = has_pending("pause") ? "paused" : "entry";
+            send_event({"event":"stopped", "body":{"reason":stop_reason,"threadId":number}});
+            _send_stopped.remove(number);
+          }
+
           var reason:String = "";
           var report_reason:Bool = false;
           reason += ("Thread " + number + " (");
@@ -722,32 +759,23 @@ class DebugAdapter {
             log(StringTools.rtrim(reason));
             send_output(StringTools.rtrim(reason));
           }
+
+          ThreadStatus.var_refs.push(null); // 1-indexed
+          for (stack_frame in t.stack_frames.iterator()) {
+            ThreadStatus.var_refs.push(stack_frame);
+            stack_frame.variablesReference = ThreadStatus.var_refs.length-1;
+          }
+
           list = next;
         }
       }
 
-      ThreadsStopped.last.var_refs.push(null); // 1-indexed
-      for (thread_stack_frames in ThreadsStopped.last.thread_stacks) {
-        for (stack_frame in thread_stack_frames) {
-          ThreadsStopped.last.var_refs.push(stack_frame);
-          stack_frame.variablesReference = ThreadsStopped.last.var_refs.length-1;
-        }
-      }
-
-      // Respond to pause if there was one, then send stopped event
-      var reason:String = "entry";
-
-      // respond to pause, if it was a pause
-      var response:Dynamic = check_pending("pause");
-      if (response!=null) {
-        reason = "paused";
-        response.success = true;
-        send_response(response);
-      }
-
-      if (_send_stopped.length>0) {
-        for (number in _send_stopped) {
-          send_event({"event":"stopped", "body":{"reason":reason,"threadId":number}});
+      if (_send_stopped.length==0) {
+        // no more stops pending? respond to pause, if it was a pause
+        var response:Dynamic = check_pending("pause");
+        if (response!=null) {
+          response.success = true;
+          send_response(response);
         }
       }
 
@@ -864,7 +892,7 @@ class StackFrame implements IVarRef {
 
     root = this;
 
-    this.id = ThreadsStopped.last.register_stack_frame(this);
+    this.id = ThreadStatus.register_stack_frame(this);
   }
 
   public static function toVSCStackFrame(s:StackFrame):Dynamic
@@ -987,8 +1015,8 @@ class Variable implements IVarRef {
     this.value = value;
 
     if (SIMPLES.indexOf(type)<0) {
-      ThreadsStopped.last.var_refs.push(this);
-      variablesReference = ThreadsStopped.last.var_refs.length-1;
+      ThreadStatus.var_refs.push(this);
+      variablesReference = ThreadStatus.var_refs.length-1;
     }
   }
 
@@ -1004,6 +1032,7 @@ class Variable implements IVarRef {
   }
 }
 
+// IVarRef, implemented by StackFrame and Variable
 interface IVarRef {
   public var parent:IVarRef;
   public var root(get, null):StackFrame;
@@ -1011,66 +1040,78 @@ interface IVarRef {
 
 class AppThread {
   public var id:Int;
+  public var stack_frames:Array<StackFrame>;
   public function new(id:Int) {
     this.id = id;
-    ThreadsStopped.last.register_app_thread(this);
+    this.stack_frames = [];
+    ThreadStatus.register_app_thread(this);
   }
   public static function toVSCThread(t:AppThread) { return { id:t.id, name:"Thread #"+t.id }; }
+  public static function idToVSCThread(id:Int) { return { id:id, name:"Thread #"+id }; }
 }
 
-class ThreadsStopped {
-  public static var last:ThreadsStopped;
+class ThreadStatus {
+  public function new() { }
 
-  public var threads:Array<AppThread>;
-  public var thread_stacks:Array<Array<StackFrame>>;
-  public var var_refs:Array<IVarRef>;
+  // Managed by ThreadCreated and ThreadTerminated
+  public static var live_threads:Array<Int> = [0];
 
-  public function new()
+  // Updated whenever thread stops
+  public static var threads:IntMap<AppThread> = new IntMap<AppThread>();
+  public static var var_refs:Array<IVarRef> = [];
+  private static var latest_thread_id:Int = 0;
+
+  public static function by_id(id:Int):AppThread { return threads.get(id); }
+
+  public static function getStackFrameById(frameId:Int):StackFrame
   {
-    this.threads = [];
-    this.thread_stacks = [];
-    this.var_refs = [];
-
-    last = this;
-  }
-
-  public function getStackFrameById(frameId:Int):StackFrame
-  {
-    for (stack in thread_stacks) {
-      if (frameId > stack.length) {
-        frameId -= stack.length;
-      } else {
-        return stack[frameId];
+    for (thread in threads.iterator()) {
+      for (stack in thread.stack_frames) {
+        if (stack.id==frameId) return stack;
       }
     }
     return null;
   }
 
-  public function threadNumForStackFrame(frame:StackFrame):Int
+  public static function threadNumForStackFrameId(frameId:Int):Int
   {
-    for (thread_num in 0...threads.length) {
-      for (stack_frame in thread_stacks[thread_num]) {
-        if (frame==stack_frame) {
-          return thread_num;
-        }
+    for (thread in threads.iterator()) {
+      for (stack in thread.stack_frames) {
+        if (frameId==stack.id) return thread.id;
       }
     }
-    return 0;
+    DebugAdapter.log("Error, thread not found for frameId "+frameId);
+    return -1;
   }
 
-  public function register_app_thread(t:AppThread):Void
+  public static function register_app_thread(t:AppThread):Void
   {
-    threads.push(t);
-    thread_stacks.push(new Array<StackFrame>());
+    latest_thread_id = t.id;
+    if (threads.exists(t.id)) {
+      // Hmm, todo: running this throws off var references (wrong variables in the gui)
+      // Dispose stack frames, var references, etc
+      // DebugAdapter.log("Disposing old thread "+t.id+" stack frames, etc");
+      // ThreadStatus.dispose_thread(threads.get(t.id));
+    }
+    threads.set(t.id, t);
   }
 
-  private var total_stack_frames:Int = 0;
-  public function register_stack_frame(frame:StackFrame):Int
+  private static var stack_frame_id_cnt:Int = 0;
+  public static function register_stack_frame(frame:StackFrame):Int
   {
-    var val = total_stack_frames++;
-    thread_stacks[thread_stacks.length-1].push(frame);
+    var val = stack_frame_id_cnt++;
+    threads.get(latest_thread_id).stack_frames.push(frame);
     var_refs.push(frame);
     return val;
   }
+
+  // Hmm, todo: running this throws off var references (wrong variables in the gui)
+  // public static function dispose_thread(t:AppThread):Void
+  // {
+  //   for (frame in t.stack_frames) {
+  //     var_refs.remove(frame);
+  //   }
+  //   threads.remove(t.id);
+  // }
 }
 

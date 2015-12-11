@@ -12,8 +12,8 @@ import debugger.HaxeRemote;
 class Main {
   static function main() {
 #if debug
-    //new debugger.HaxeRemote(true, "localhost");
-    new debugger.Local(true);
+    new debugger.HaxeRemote(true, "localhost");
+    //new debugger.Local(true);
 #end
 
     // var abcd:String = null;
@@ -71,20 +71,26 @@ class Main {
   }
 
   static function thread_test() {
-    Thread.create(thread_test);
-    Thread.create(thread_test);
-    thread_test_int();
+    Thread.create(thread_test_int).sendMessage("First");
+    Thread.create(thread_test_int).sendMessage("Second");
+
+    for (i in 0...300) {
+      Sys.sleep(0.1);
+    }
+    trace("Leaving Main thread");
   }
 
   static function thread_test_int() {
-    trace("In thread...");
-    var a = 0;
+    var name:String = Thread.readMessage(true);
+    trace("In thread: "+name);
+    var a = new cpp.Random().int(100000);
     for (i in 0...200) {
       Sys.sleep(0.1);
       a += i;
     }
-    trace("Leaving thread. a="+a);
+    trace("Leaving thread "+name+". a="+a);
   }
+
 
   static function test_things() {
     var things = [];
