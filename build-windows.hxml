@@ -1,5 +1,7 @@
 -cp src
 -main Main
+-D windows
+-D HX_UTF8_STRINGS
 -cpp bin/windows
 -lib debugger
 -cmd "move bin\windows\Main.exe bin\windows\vschxcppdb.exe"

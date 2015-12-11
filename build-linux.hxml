@@ -1,5 +1,7 @@
 -cp src
 -main Main
+-D linux
+-D HX_UTF8_STRINGS
 -cpp bin/linux
 -lib debugger
 -cmd "mv bin/linux/Main bin/linux/vschxcppdb"
