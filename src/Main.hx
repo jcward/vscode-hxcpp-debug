@@ -53,10 +53,10 @@ class DebugAdapter {
   var _debugger_commands:Deque<Command>;
   var _pending_responses:Array<Dynamic>; 
 
-  public function new(i:Input, o:Output, log:Output) {
+  public function new(i:Input, o:Output, log_o:Output) {
     _input = new AsyncInput(i);
     _output = o;
-    _log = log;
+    _log = log_o;
     _log_mutex = new Mutex();
 
     _debugger_messages = new Deque<Message>();
@@ -87,13 +87,13 @@ class DebugAdapter {
 
   function burn_blank_line():Void
   {
-    // windows: 10
-    // linux/mac: 13/10
     var b:Int;
-    b = _input.readByte();
-    if (b==10) return;
-    if (b!=13) log("Protocol error, expected 10 or 13, got "+b);
+#if windows
     if ((b=_input.readByte())!=10) log("Protocol error, expected 10, got "+b);
+#else
+    if ((b=_input.readByte())!=13) log("Protocol error, expected 13, got "+b);
+    if ((b=_input.readByte())!=10) log("Protocol error, expected 10, got "+b);
+#end
   }
 
   // Let's see how this works in Windows before we go trying to improve it...
@@ -156,6 +156,7 @@ class DebugAdapter {
     _output.writeByte(10);
 #end
     _output.writeBytes(b, 0, b.length);
+    _output.flush();
   }
 
   var _event_sequence:Int = 1;
