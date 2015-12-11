@@ -86,8 +86,13 @@ class DebugAdapter {
 
   function burn_blank_line():Void
   {
-    if (_input.readByte()!=13) log("Protocol error, expected 13");
-    if (_input.readByte()!=10) log("Protocol error, expected 10");
+    // windows: 10
+    // linux/mac: 13/10
+    var b:Int;
+    b = _input.readByte();
+    if (b==10) return;
+    if (b!=13) log("Protocol error, expected 10 or 13, got "+b);
+    if ((b=_input.readByte())!=10) log("Protocol error, expected 10, got "+b);
   }
 
   // Let's see how this works in Windows before we go trying to improve it...
@@ -140,10 +145,15 @@ class DebugAdapter {
     log(json);
 
     _output.writeString("Content-Length: "+b.length);
+#if windows
+    _output.writeByte(10);
+    _output.writeByte(10);
+#else
     _output.writeByte(13);
     _output.writeByte(10);
     _output.writeByte(13);
     _output.writeByte(10);
+#end
     _output.writeBytes(b, 0, b.length);
   }
 
