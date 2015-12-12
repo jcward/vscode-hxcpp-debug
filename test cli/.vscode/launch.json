@@ -2,7 +2,6 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-//			"runtimeExecutable": "${execPath}",
 			"args": [
 				"compilePath=${workspaceRoot}",
 				"compileCommand=haxe build\\ proj.hxml",
@@ -10,7 +9,19 @@
 				"runCommand=Main-debug",
 				"runInTerminal=true"
 			],
-			"name": "Debug mode",
+			"name": "Build and debug",
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		},
+		{
+			"args": [
+				"runPath=${workspaceRoot}/export",
+				"runCommand=Main-debug",
+				"runInTerminal=true"
+			],
+			"name": "Debug",
 			"type": "hxcpp",
 			"request": "launch",
 			"program": "",
