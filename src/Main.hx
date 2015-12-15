@@ -45,7 +45,8 @@ class DebugAdapter {
   var _runInTerminal:Bool = false;
   var _run_process:Process;
 
-  var _sent_initialized:Bool = false;
+  var _server_initialized:Bool = false;
+  var _first_stopped:Bool = false;
   var _send_stopped:Array<Int> = [];
 
   var _vsc_haxe_server:Thread;
@@ -452,7 +453,7 @@ class DebugAdapter {
     _run_process = start_process(_runCommand, _runPath, _runInTerminal);
 
     // Wait for debugger to connect... TODO: timeout?
-    _sent_initialized = false;
+    _server_initialized = false;
   }
 
   function read_compile() {
@@ -533,10 +534,20 @@ class DebugAdapter {
   {
     var old:String = null;
     if (in_terminal) {
-      // TODO: windows open in terminal? start? cmd? something...
-      // TODO: mac open in terminal? start? cmd? something...
-      // TODO: optional terminal command (for non-gnome-terminal)
+#if mac
+      // Create /tmp/run, run "open /tmp/run"
+      var run = sys.io.File.write("/tmp/run", false);
+      run.writeString("cd "+path.split(" ").join('\\ ')+"; ./"+cmd.split(" ").join('\\ '));
+      run.flush(); run.close();
+      Sys.command("chmod", ["a+x", "/tmp/run"]);
+      cmd = "open /tmp/run";
+#elseif linux
+      // TODO: optional terminal command (for non-gnome-terminal/ubuntu)
       cmd = "gnome-terminal --working-directory="+path.split(" ").join('\\ ')+" -x ./"+cmd.split(" ").join('\\ ');
+#elseif windows
+      // TODO: windows open in terminal? start? cmd? something...
+      log("Error, runInTerminal is not supported in Windows yet...");
+#end
     } else {
       old = Sys.getCwd();
       Sys.setCwd(path);
@@ -637,10 +648,8 @@ class DebugAdapter {
     }
 
     // The first OK indicates a connection with the debugger
-    if (message==OK && _sent_initialized == false) {
-      _sent_initialized = true;
-      _debugger_commands.add(Files);
-      _debugger_commands.add(FilesFullPath);
+    if (message==OK && _server_initialized == false) {
+      _server_initialized = true;
       return;
     }
 
@@ -685,6 +694,13 @@ class DebugAdapter {
       log("\nThread " + number + " stopped in " +
           className + "." + functionName + "() at " +
           fileName + ":" + lineNumber + ".");
+
+      // First time thread stopped, ask for files first
+      if (!_first_stopped) {
+        _first_stopped = true;
+        _debugger_commands.add(Files);
+        _debugger_commands.add(FilesFullPath);
+      }
 
     //_debugger_commands.add(WhereAllThreads);
       _debugger_commands.add(SetCurrentThread(number));
