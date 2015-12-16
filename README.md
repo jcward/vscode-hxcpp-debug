@@ -67,6 +67,7 @@ If you do not see these options, ensure your project folder contains a `.vscode/
 
 Here are some potential errors you might receive, and how you might resolve them:
 
+- **DebugAdapter bin folder not found on path** - build the debug adapter from `vscode-hxcpp-debug` using `haxe build-<platform>.hxml`
 - **Configured debug type 'hxcpp' is not supported** or **No extension installed for 'hxcpp' debugging** - the extension is not properly installed in your `.vscode/extensions` directory. Ensure the `vscode-hxcpp-debug` directory is there, and that it contains the `package.json` file. Try restarting VSCode.
 - **Build and debug fails with COMPILE FAILED error** - ensure the `compileCommand` and `compilePath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project.
 - **The debugger hangs after compiling** - ensure your `runCommand` and `runPath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project. In addition, ensure you've compiled your project in debug mode, included the debugger library, and inserted the `new HaxeRemote()` hunk of code listed above. 
