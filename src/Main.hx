@@ -550,8 +550,9 @@ class DebugAdapter {
       // TODO: optional terminal command (for non-gnome-terminal/ubuntu)
       cmd = "gnome-terminal --working-directory="+path.split(" ").join('\\ ')+" -x ./"+cmd.split(" ").join('\\ ');
 #elseif windows
-      // TODO: windows open in terminal? start? cmd? something...
-      log("Error, runInTerminal is not supported in Windows yet...");
+      // Hmm, this should work but doesn't...
+      // cmd = "start /wait cmd /C \"cd "+path+" && "+cmd+"\"";
+      send_output("Error: runInTerminal not yet supported in Windows...");
 #end
     } else {
       old = Sys.getCwd();
