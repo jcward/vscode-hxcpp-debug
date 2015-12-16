@@ -28,7 +28,7 @@
 
         "enableBreakpointsFor": { "languageIds": [ "haxe" ] },
 
-        "windows": {
+        "win": {
             "program": "./bin/windows/vschxcppdb.exe"
         },
         "osx": {
