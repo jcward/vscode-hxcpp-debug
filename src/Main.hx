@@ -18,7 +18,10 @@ import debugger.IController;
 class Main {
   static function main() {
     // new debugger.HaxeRemote(true, "localhost", 7001);
-    var log = sys.io.File.append("/tmp/adapter.log", false);
+    var log:Output = null;
+    if (sys.FileSystem.isDirectory("/tmp")) {
+      log = sys.io.File.append("/tmp/adapter.log", false);
+    }
     var input = Sys.stdin();
     if (Sys.args().length>0) {
       trace("Reading file input...");
@@ -81,8 +84,10 @@ class DebugAdapter {
   static var _log_mutex:Mutex;
   static public function log(s:String) {
     _log_mutex.acquire();
-    _log.writeString(Sys.time()+": "+s+"\n");
-    _log.flush();
+    if (_log!=null) {
+      _log.writeString(Sys.time()+": "+s+"\n");
+      _log.flush();
+    }
     _log_mutex.release();
   }
 
