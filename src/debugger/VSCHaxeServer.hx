@@ -18,7 +18,6 @@
 
 package debugger;
 
-import debugger.VSCController;
 import debugger.HaxeProtocol;
 import debugger.IController;
 
@@ -27,7 +26,6 @@ import cpp.vm.Thread;
 
 class VSCHaxeServer
 {
-  //private var mController : VSCController;
   private var mSocketQueue : Deque<sys.net.Socket>;
   private var log:String->Void;
 
@@ -41,7 +39,6 @@ class VSCHaxeServer
                         port : Int=6972)
     {
         log = logFunc;
-        //mController = new VSCController(logFunc);
         mSocketQueue = new Deque<sys.net.Socket>();
         var t = Thread.create(readCommandMain);
         t.sendMessage(commandQueue);
