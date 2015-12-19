@@ -11,7 +11,7 @@ Place (or symlink) the `vscode-haxe-debug` folder in your VSCode extensions dire
 
 (If it's running, restart Visual Studio Code after installing the extension.)
 
-Note: This extension doesn't provide language support / syntax highlight. For that, install https://github.com/nadako/vscode-haxe in your extensions directory in the same way.
+Note: This extension doesn't provide language support / syntax highlight. For that, install https://github.com/jcward/vscode-haxe in your extensions directory in the same way.
 
 ## Usage
 
