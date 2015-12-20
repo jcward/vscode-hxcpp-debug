@@ -3,6 +3,8 @@ package;
 import haxe.io.Input;
 import haxe.io.Output;
 import haxe.io.Bytes;
+import haxe.io.Path;
+
 import sys.FileSystem;
 
 import haxe.ds.StringMap;
@@ -458,6 +460,18 @@ class DebugAdapter {
       send_output("Error: runPath not found: "+_runPath);
       do_disconnect();
       return;
+    }
+
+    var exec = Path.normalize(_runPath+'/'+_runCommand);
+    if (!FileSystem.exists(exec)) {
+      if (FileSystem.exists(exec+".exe")) {
+        _runCommand += '.exe';
+      } else {
+        log("Error: runCommand not found: "+exec);
+        send_output("Error: runCommand not found: "+exec);
+        do_disconnect();
+        return;
+      }
     }
 
     log("Launching application...");
