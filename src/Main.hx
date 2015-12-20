@@ -3,6 +3,7 @@ package;
 import haxe.io.Input;
 import haxe.io.Output;
 import haxe.io.Bytes;
+import sys.FileSystem;
 
 import haxe.ds.StringMap;
 import haxe.ds.IntMap;
@@ -451,6 +452,13 @@ class DebugAdapter {
     _vsc_haxe_server.sendMessage(log);
     _vsc_haxe_server.sendMessage(_debugger_messages);
     _vsc_haxe_server.sendMessage(_debugger_commands);
+
+    if (!FileSystem.isDirectory(_runPath)) {
+      log("Error: runPath not found: "+_runPath);
+      send_output("Error: runPath not found: "+_runPath);
+      do_disconnect();
+      return;
+    }
 
     log("Launching application...");
     send_output("Launching application...");
