@@ -1,5 +1,7 @@
 # vscode-haxe-debug
 
+FYI: Windows and Mac support is buggy right now. Linux works. I'll remove this note when it's fixed.
+
 ## Installation
 
 Pre-requisite: download and install [Visual Studio Code](https://code.visualstudio.com/)
