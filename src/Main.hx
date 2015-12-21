@@ -703,6 +703,7 @@ class DebugAdapter {
 
     // The first OK indicates a connection with the debugger
     if (message==OK && _server_initialized == false) {
+      _warn_timeout = 0;
       _server_initialized = true;
       return;
     }
