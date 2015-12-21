@@ -51,6 +51,8 @@ class DebugAdapter {
   var _runInTerminal:Bool = false;
   var _run_process:Process;
 
+  var _warn_timeout:Float = 0;
+
   var _server_initialized:Bool = false;
   var _first_stopped:Bool = false;
   var _send_stopped:Array<Int> = [];
@@ -75,6 +77,10 @@ class DebugAdapter {
       if (_input.hasData() && outstanding_variables==null) read_from_vscode();
       if (_compile_process!=null) read_compile();
       if (_run_process!=null) check_debugger_messages();
+      if (_warn_timeout>0 && Sys.time()>_warn_timeout) {
+        _warn_timeout = 0;
+        send_output("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
+      }
       Sys.sleep(0.05);
     }
   }
@@ -478,6 +484,8 @@ class DebugAdapter {
     send_output("Launching application...");
 
     _run_process = start_process(_runCommand, _runPath, _runInTerminal);
+
+    _warn_timeout = Sys.time()+3;
 
     // Wait for debugger to connect... TODO: timeout?
     _server_initialized = false;
