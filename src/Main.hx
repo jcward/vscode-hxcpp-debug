@@ -80,7 +80,7 @@ class DebugAdapter {
       if (_run_process!=null) check_debugger_messages();
       if (_warn_timeout>0 && Sys.time()>_warn_timeout) {
         _warn_timeout = 0;
-        log("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
+        log("Client not yet connected, does it 1) call new HaxeRemote(true, 'localhost'), 2) compiled with -debug, and 3) define -D HXCPP_DEBUGGER ?");
         send_output("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
       }
       // Grr, this is dying instantly... gnome-terminal layer closes :(
