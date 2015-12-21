@@ -1,4 +1,4 @@
-# vscode-haxe-debug
+# vscode-hxcpp-debug
 
 FYI: Windows and Mac support is buggy right now. Linux works. I'll remove this note when it's fixed.
 
