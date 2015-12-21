@@ -83,12 +83,13 @@ class DebugAdapter {
         log("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
         send_output("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
       }
-      var exit:Null<Int> = _run_exit_deque.pop(false);
-      if (exit != null) {
-        log("Client app process exited: "+exit);
-        send_output("Client app process exited: "+exit);
-        do_disconnect();
-      }
+      // Grr, this is dying instantly... gnome-terminal layer closes :(
+      // var exit:Null<Int> = _run_exit_deque.pop(false);
+      // if (exit != null) {
+      //   log("Client app process exited: "+exit);
+      //   send_output("Client app process exited: "+exit);
+      //   do_disconnect();
+      // }
       Sys.sleep(0.05);
     }
   }
@@ -634,7 +635,10 @@ class DebugAdapter {
     var dq:Deque<Int> = Thread.readMessage(true);
     var proc:Process = Thread.readMessage(true);
     
+    log("PM: Monitoring process: "+proc.getPid());
     var exit = proc.exitCode();
+    log("PM: Detected process exit: "+exit);
+
     dq.push(exit);
   }
   var current_parent:IVarRef;
