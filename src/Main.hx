@@ -61,6 +61,7 @@ class DebugAdapter {
   var _debugger_messages:Deque<Message>;
   var _debugger_commands:Deque<Command>;
   var _pending_responses:Array<Dynamic>; 
+  var _run_exit_deque:Deque<Int>;
 
   public function new(i:Input, o:Output, log_o:Output) {
     _input = new AsyncInput(i);
@@ -70,16 +71,23 @@ class DebugAdapter {
 
     _debugger_messages = new Deque<Message>();
     _debugger_commands = new Deque<Command>();
+    _run_exit_deque = new Deque<Int>();
 
     _pending_responses = [];
-
     while (true) {
       if (_input.hasData() && outstanding_variables==null) read_from_vscode();
       if (_compile_process!=null) read_compile();
       if (_run_process!=null) check_debugger_messages();
       if (_warn_timeout>0 && Sys.time()>_warn_timeout) {
         _warn_timeout = 0;
+        log("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
         send_output("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
+      }
+      var exit:Null<Int> = _run_exit_deque.pop(false);
+      if (exit != null) {
+        log("Client app process exited: "+exit);
+        send_output("Client app process exited: "+exit);
+        do_disconnect();
       }
       Sys.sleep(0.05);
     }
@@ -484,6 +492,9 @@ class DebugAdapter {
     send_output("Launching application...");
 
     _run_process = start_process(_runCommand, _runPath, _runInTerminal);
+    var t = Thread.create(monitor_run_process);
+    t.sendMessage(_run_exit_deque);
+    t.sendMessage(_run_process);
 
     _warn_timeout = Sys.time()+3;
 
@@ -619,6 +630,13 @@ class DebugAdapter {
     // fyi, the above constructor function does not return
   }
 
+  static function monitor_run_process() {
+    var dq:Deque<Int> = Thread.readMessage(true);
+    var proc:Process = Thread.readMessage(true);
+    
+    var exit = proc.exitCode();
+    dq.push(exit);
+  }
   var current_parent:IVarRef;
   var current_fqn:String;
   var outstanding_variables:StringMap<Variable>;
