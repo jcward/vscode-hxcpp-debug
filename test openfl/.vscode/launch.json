@@ -5,9 +5,9 @@
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"compilePath=${workspaceRoot}",
-				"compileCommand=openfl build linux -debug -DHXCPP_DEBUGGER",
-				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
-				"runCommand=DisplayingABitmap",
+				"compileCommand=openfl build windows -debug -DHXCPP_DEBUGGER",
+				"runPath=${workspaceRoot}/Export/windows/cpp/bin/",
+				"runCommand=DisplayingABitmap.exe",
 				"runInTerminal=false"
 			],
 			"name": "Build and debug",
@@ -18,8 +18,8 @@
 		{
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
-				"runCommand=DisplayingABitmap",
+				"runPath=${workspaceRoot}/Export/windows/cpp/bin/",
+				"runCommand=DisplayingABitmap.exe",
 				"runInTerminal=false"
 			],
 			"name": "Debug",
