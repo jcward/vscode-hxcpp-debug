@@ -80,14 +80,12 @@ class DebugAdapter {
       if (_run_process!=null) check_debugger_messages();
       if (_warn_timeout>0 && Sys.time()>_warn_timeout) {
         _warn_timeout = 0;
-        log("Client not yet connected, does it 1) call new HaxeRemote(true, 'localhost'), 2) compiled with -debug, and 3) define -D HXCPP_DEBUGGER ?");
-        send_output("Client not yet connected, does it call new HaxeRemote(true, 'localhost') ?");
+        log_and_output("Client not yet connected, does it 1) call new HaxeRemote(true, 'localhost'), 2) compiled with -debug, and 3) define -D HXCPP_DEBUGGER ?");
       }
       // Grr, this is dying instantly... gnome-terminal layer closes :(
       // var exit:Null<Int> = _run_exit_deque.pop(false);
       // if (exit != null) {
-      //   log("Client app process exited: "+exit);
-      //   send_output("Client app process exited: "+exit);
+      //   log_and_output("Client app process exited: "+exit);
       //   do_disconnect();
       // }
       Sys.sleep(0.05);
@@ -191,6 +189,12 @@ class DebugAdapter {
     send_response(event);
   }
 
+  inline function log_and_output(output:String):Void
+  {
+    log(output);
+    send_output(output);
+  }
+
   function send_output(output:String, category:String='console', add_newline:Bool=true):Void
   {
     // Attempts at seeing all messages ???
@@ -255,8 +259,9 @@ class DebugAdapter {
 
         var success = true;
         if (compileCommand!=null) {
-          log("Compiling...");
-          send_output("Compiling...");
+          log_and_output("Compiling...");
+          log_and_output("cd "+compilePath);
+          log_and_output(compileCommand);
           _compile_process = start_process(compileCommand, compilePath);
           _compile_stdout = new AsyncInput(_compile_process.stdout);
           _compile_stderr = new AsyncInput(_compile_process.stderr);
@@ -471,8 +476,7 @@ class DebugAdapter {
     _vsc_haxe_server.sendMessage(_debugger_commands);
 
     if (!FileSystem.isDirectory(_runPath)) {
-      log("Error: runPath not found: "+_runPath);
-      send_output("Error: runPath not found: "+_runPath);
+      log_and_output("Error: runPath not found: "+_runPath);
       do_disconnect();
       return;
     }
@@ -482,15 +486,13 @@ class DebugAdapter {
       if (FileSystem.exists(exec+".exe")) {
         _runCommand += '.exe';
       } else {
-        log("Error: runCommand not found: "+exec);
-        send_output("Error: runCommand not found: "+exec);
+        log_and_output("Error: runCommand not found: "+exec);
         do_disconnect();
         return;
       }
     }
 
-    log("Launching application...");
-    send_output("Launching application...");
+    log_and_output("Launching application...");
 
     _run_process = start_process(_runCommand, _runPath, _runInTerminal);
     var t = Thread.create(monitor_run_process);
@@ -540,8 +542,7 @@ class DebugAdapter {
     if (compile_finished) {
 
       var success = _compile_process.exitCode()==0;
-      log("Compile "+(success ? "succeeded!" : "FAILED!"));
-      send_output("Compile "+(success ? "succeeded!" : "FAILED!"));
+      log_and_output("Compile "+(success ? "succeeded!" : "FAILED!"));
       _compile_process = null;
       _compile_stdout = null;
       _compile_stderr = null;
@@ -842,8 +843,7 @@ class DebugAdapter {
             reason += ("No stack.\n");
           }
           if (report_reason) {
-            log(StringTools.rtrim(reason));
-            send_output(StringTools.rtrim(reason));
+            log_and_output(StringTools.rtrim(reason));
           }
 
           list = next;
