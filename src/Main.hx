@@ -723,15 +723,9 @@ class DebugAdapter {
         tgt = SourceFiles.files_full = [];
       }
 
-      while (true) {
-        switch (list) {
-        case Terminator:
-          break;
-        case Element(name, next):
+      for(name in list) {
           if (name.indexOf("Main.hx")>=0) log("Push: "+name);
           tgt.push(name);
-          list = next;
-        }
       }
 
       // Send initialized after files have been queried, ready to
@@ -866,17 +860,11 @@ class DebugAdapter {
       outstanding_variables = new StringMap<Variable>();
       outstanding_variables_cnt = 0;
 
-      while (true) {
-        switch (list) {
-        case Terminator:
-          break;
-        case Element(name, next):
-          var v = new Variable(name, current_parent);
-          outstanding_variables.set(name, v);
-          _debugger_commands.add(PrintExpression(false, v.name));
-          list = next;
-          outstanding_variables_cnt++;
-        }
+      for(name in list) {
+        var v = new Variable(name, current_parent);
+        outstanding_variables.set(name, v);
+        _debugger_commands.add(PrintExpression(false, v.name));
+        outstanding_variables_cnt++;
       }
 
       // No variables?
