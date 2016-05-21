@@ -1,26 +1,32 @@
 # vscode-hxcpp-debug
 
-FYI: Windows and Mac support is buggy right now. Linux works. I'll remove this note when it's fixed.
+The `vscode-hxcpp-debug` project is a Visual Studio Code extension (a debug
+adapter) that allows for debugging hxcpp applications in VSCode. This includes
+features like stepping through Haxe code and inspecting variables.
+
+Used in combination with the `vscode-haxe` language extension (which provides syntax highlighting, auto-completion, etc and is available from the extensions marketplace, or the [github repo](https://github.com/jcward/vscode-haxe), it makes VSCode is good cross-platform IDE for developing hxcpp apps.
 
 ## Installation
 
 Pre-requisite: download and install [Visual Studio Code](https://code.visualstudio.com/)
 
-Place (or symlink) the `vscode-haxe-debug` folder in your VSCode extensions directory:
-- Linux: `$HOME/.vscode/extensions`
-- Mac: `$HOME/.vscode/extensions`
-- Windows: `%USERPROFILE%\.vscode\extensions`
+1.  Clone the `vscode-hxcpp-debug` repo
+2.  Build the debug adapter using `haxe build-<platform>.hxml`
+3.  Copy (or symlink) the `vscode-haxe-debug` folder to your VSCode extensions directory:
+  - Linux: `$HOME/.vscode/extensions`
+  - Mac: `$HOME/.vscode/extensions`
+  - Windows: `%USERPROFILE%\.vscode\extensions`
 
 (If it's running, restart Visual Studio Code after installing the extension.)
 
-Note: This extension doesn't provide language support / syntax highlight. For that, install https://github.com/jcward/vscode-haxe in your extensions directory in the same way.
+Note: This extension doesn't provide language support / syntax highlight. For that, install the vscode-haxe extension 
 
 ## Usage
 
 ### Prerequisites
 If you haven't already, install the debugger library from git:
 ```
-haxelib git debugger https://github.com/HaxeFoundation/hxcpp-debugger
+haxelib git hxcpp-debugger https://github.com/HaxeFoundation/hxcpp-debugger
 ```
 
 ### Setup your project
@@ -37,13 +43,13 @@ You will need to update some of the parameters -- these tell the extension how t
 ```
 
 Your app needs to:
-- include the library (`-lib debugger`)
+- include the library (`-lib hxcpp-debugger`)
 - be compiled in `-debug` mode
 - be compiled with `-D HXCPP_DEBUGGER`
 
 If using OpenFL, add the following to your project.xml file to satisfy the above conditions:
 ```
-	<haxelib name="debugger" if="debug" />
+	<haxelib name="hxcpp-debugger" if="debug" />
 	<haxedef name="HXCPP_DEBUGGER" if="debug"/>
 ```
 
@@ -73,12 +79,3 @@ Here are some potential errors you might receive, and how you might resolve them
 - **Configured debug type 'hxcpp' is not supported** or **No extension installed for 'hxcpp' debugging** - the extension is not properly installed in your `.vscode/extensions` directory. Ensure the `vscode-hxcpp-debug` directory is there, and that it contains the `package.json` file. Try restarting VSCode.
 - **Build and debug fails with COMPILE FAILED error** - ensure the `compileCommand` and `compilePath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project.
 - **The debugger hangs after compiling** - ensure your `runCommand` and `runPath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project. In addition, ensure you've compiled your project in debug mode, included the debugger library, and inserted the `new HaxeRemote()` hunk of code listed above. 
-
-## Debug adapter development notes
-
-###VSC documentation
-- https://code.visualstudio.com/docs/extensions/example-debuggers
-- https://code.visualstudio.com/docs/extensionAPI/api-debugging
-
-###HXCPP debugger
-- Existing CLI debugger: https://github.com/HaxeFoundation/hxcpp-debugger

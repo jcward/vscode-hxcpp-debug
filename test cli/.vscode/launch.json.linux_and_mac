@@ -4,7 +4,7 @@
 		{
 			"args": [
 				"compilePath=${workspaceRoot}",
-				"compileCommand=haxe build\\ proj.hxml",
+				"compileCommand=haxe build.hxml",
 				"runPath=${workspaceRoot}/export",
 				"runCommand=Main-debug",
 				"runInTerminal=true"

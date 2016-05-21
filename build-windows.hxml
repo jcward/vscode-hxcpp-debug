@@ -3,5 +3,5 @@
 -D windows
 -D HX_UTF8_STRINGS
 -cpp bin/windows
--lib debugger
+-lib hxcpp-debugger
 -cmd "move bin\windows\Main.exe bin\windows\vschxcppdb.exe"

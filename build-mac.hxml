@@ -3,5 +3,5 @@
 -D mac
 -D HX_UTF8_STRINGS
 -cpp bin/mac
--lib debugger
+-lib hxcpp-debugger
 -cmd "mv bin/mac/Main bin/mac/vschxcppdb"
