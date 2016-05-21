@@ -1,5 +1,7 @@
 # vscode-hxcpp-debug
 
+**Status:** Alpha, unstable. Check the [issue list](https://github.com/jcward/vscode-hxcpp-debug/issues).
+
 The `vscode-hxcpp-debug` project is a Visual Studio Code extension (a debug
 adapter) that allows for debugging hxcpp applications in VSCode. This includes
 features like stepping through Haxe code and inspecting variables.
@@ -10,7 +12,17 @@ Used in combination with the `vscode-haxe` language extension (which provides sy
 
 ## Installation
 
-Pre-requisite: download and install [Visual Studio Code](https://code.visualstudio.com/)
+**Pre-requisites:**
+
+1. Download and install [Visual Studio Code](https://code.visualstudio.com/)
+2. Install the `hxcpp-debugger` library from git:
+```
+haxelib git hxcpp-debugger https://github.com/HaxeFoundation/hxcpp-debugger
+```
+
+**Install the extension:**
+
+Note: Once this project stabilizes, I'll push it to the marketplace for easier installation.
 
 1.  Clone the `vscode-hxcpp-debug` repo
 2.  Build the debug adapter using `haxe build-<platform>.hxml`
@@ -25,14 +37,8 @@ Note: This extension doesn't provide language support / syntax highlight. For th
 
 ## Usage
 
-### Prerequisites
-If you haven't already, install the debugger library from git:
-```
-haxelib git hxcpp-debugger https://github.com/HaxeFoundation/hxcpp-debugger
-```
-
 ### Setup your project
-In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl).
+In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files (they are currently platform-specific) in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl).
 
 You will need to update some of the parameters -- these tell the extension how to compile and launch your project, for example:
 
