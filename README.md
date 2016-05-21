@@ -6,6 +6,8 @@ features like stepping through Haxe code and inspecting variables.
 
 Used in combination with the `vscode-haxe` language extension (which provides syntax highlighting, auto-completion, etc and is available from the extensions marketplace, or the [github repo](https://github.com/jcward/vscode-haxe), it makes VSCode is good cross-platform IDE for developing hxcpp apps.
 
+<img src="https://cloud.githubusercontent.com/assets/2192439/15448839/34b33624-1f2a-11e6-8585-0b583d32e7e1.png" width=500>
+
 ## Installation
 
 Pre-requisite: download and install [Visual Studio Code](https://code.visualstudio.com/)
