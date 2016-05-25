@@ -38,7 +38,7 @@ Note: This extension doesn't provide language support / syntax highlight. For th
 ## Usage
 
 ### Setup your project
-In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files (they are currently platform-specific) in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl).
+In your project, add a `.vscode` folder with a `launch.json` file in it. See example `launch.json` files (they have platform-specific build sections for Windows, Linux, & Mac) in the [test CLI project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli) or the [test OpenFL project](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20openfl).
 
 You will need to update some of the parameters -- these tell the extension how to compile and launch your project, for example:
 
@@ -69,7 +69,7 @@ Near the entry point of your app, add the following code:
 #end
 ```
 
-(In place of localhost, you can use the IP address of your computer if you're debugging a mobile app, for example.)
+(In place of localhost, you can use the IP address or hostname of your computer if you're remote debugging a mobile app, for example.)
 
 Open your project folder in Visual Studio Code. 
 
@@ -87,5 +87,5 @@ Here are some potential errors you might receive, and how you might resolve them
 - **Configured debug type 'hxcpp' is not supported** or **No extension installed for 'hxcpp' debugging** - the extension is not properly installed in your `.vscode/extensions` directory. Ensure the `vscode-hxcpp-debug` directory is there, and that it contains the `package.json` file. Try restarting VSCode.
 - **Build and debug fails with COMPILE FAILED error** - ensure the `compileCommand` and `compilePath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project.
 - **The debugger hangs after compiling** - ensure your `runCommand` and `runPath` in your `launch.json` file has the correct command, arguments, and syntax required to build your project. In addition, ensure you've compiled your project in debug mode, included the debugger library, and inserted the `new HaxeRemote()` hunk of code listed above. 
-- **Error: runCommand not found: Main-debug.exe** In general, this means the `runCommand` in your `launch.json` (which should be the executable result of your build, e.g. `MyApp.exe`) is not found. If you're trying one of the test projects from Linux / Mac and see .exe in the error message, note that there are two launch.json files in the [`.vscode` directory](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli/.vscode). Use the one for Linux/Mac: `cp .vscode/launch.json.linux_and_mac launch.json`
+- **Error: runCommand not found: Main-debug.exe** In general, this means the `runCommand` in your `launch.json` (which should be the executable result of your build, e.g. `MyApp.exe`) is not found. Also make sure your compile and run commands are appropriate for your platfor (see the various configuration sections of the launch.json file in the [sample `.vscode` directory](https://github.com/jcward/vscode-hxcpp-debug/tree/master/test%20cli/.vscode)).
 - **Build failed, cannot write Main-debug.exe** or similar. Sometimes your program is still running from an old launch. You may have to start task manager and kill your app before you can build it again.

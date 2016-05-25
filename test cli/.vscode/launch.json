@@ -2,6 +2,7 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Windows: Build and Debug",
 			"args": [
 				"compilePath=${workspaceRoot}",
 				"compileCommand=haxe build.hxml",
@@ -9,23 +10,50 @@
 				"runCommand=Main-debug.exe",
 				"runInTerminal=false"
 			],
-			"name": "Build and debug",
 			"type": "hxcpp",
 			"request": "launch",
 			"program": "",
 			"stopOnEntry": true
 		},
 		{
+			"name": "Windows: Debug",
 			"args": [
 				"runPath=${workspaceRoot}/export",
 				"runCommand=Main-debug.exe",
 				"runInTerminal=false"
 			],
-			"name": "Debug",
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		},
+
+		{
+			"name": "OSX/Linux: Build and Debug",
+			"args": [
+				"compilePath=${workspaceRoot}",
+				"compileCommand=haxe build.hxml",
+				"runPath=${workspaceRoot}/export",
+				"runCommand=Main-debug",
+				"runInTerminal=true"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		},
+		{
+			"name": "OSX/Linux: Debug",
+			"args": [
+				"runPath=${workspaceRoot}/export",
+				"runCommand=Main-debug",
+				"runInTerminal=true"
+			],
 			"type": "hxcpp",
 			"request": "launch",
 			"program": "",
 			"stopOnEntry": true
 		}
+
 	]
 }
