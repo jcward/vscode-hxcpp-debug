@@ -8,7 +8,7 @@
 	
 	<haxelib name="openfl" />
 
-	<haxelib name="debugger" if="debug" />
+	<haxelib name="hxcpp-debugger" if="debug" />
 	<haxedef name="HXCPP_DEBUGGER" if="debug"/>
 
 	<assets path="Assets" rename="assets" />
