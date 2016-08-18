@@ -60,7 +60,7 @@ class DebugAdapter {
   var _vsc_haxe_server:Thread;
   var _debugger_messages:Deque<Message>;
   var _debugger_commands:Deque<Command>;
-  var _pending_responses:Array<Dynamic>; 
+  var _pending_responses:Array<Dynamic>;
   var _run_exit_deque:Deque<Int>;
 
   public function new(i:Input, o:Output, log_o:Output) {
@@ -486,9 +486,7 @@ class DebugAdapter {
       if (FileSystem.exists(exec+".exe")) {
         _runCommand += '.exe';
       } else {
-        log_and_output("Error: runCommand not found: "+exec);
-        do_disconnect();
-        return;
+        log_and_output("Warning: runCommand not found: "+exec);
       }
     }
 
@@ -635,7 +633,7 @@ class DebugAdapter {
   static function monitor_run_process() {
     var dq:Deque<Int> = Thread.readMessage(true);
     var proc:Process = Thread.readMessage(true);
-    
+
     log("PM: Monitoring process: "+proc.getPid());
     var exit = proc.exitCode();
     log("PM: Detected process exit: "+exit);
