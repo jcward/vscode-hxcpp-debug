@@ -74,6 +74,10 @@ class DebugAdapter {
     _run_exit_deque = new Deque<Int>();
 
     _pending_responses = [];
+
+    // set an environment variable so that the program knows it's being debugged
+    Sys.putEnv('HXCPP_DEBUG', 'true');
+
     while (true) {
       if (_input.hasData() && outstanding_variables==null) read_from_vscode();
       if (_compile_process!=null) read_compile();
