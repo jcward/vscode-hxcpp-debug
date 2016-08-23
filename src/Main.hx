@@ -60,7 +60,7 @@ class DebugAdapter {
   var _vsc_haxe_server:Thread;
   var _debugger_messages:Deque<Message>;
   var _debugger_commands:Deque<Command>;
-  var _pending_responses:Array<Dynamic>; 
+  var _pending_responses:Array<Dynamic>;
   var _run_exit_deque:Deque<Int>;
 
   public function new(i:Input, o:Output, log_o:Output) {
@@ -74,6 +74,10 @@ class DebugAdapter {
     _run_exit_deque = new Deque<Int>();
 
     _pending_responses = [];
+
+    // set an environment variable so that the program knows it's being debugged
+    Sys.putEnv('HXCPP_DEBUG', 'true');
+
     while (true) {
       if (_input.hasData() && outstanding_variables==null) read_from_vscode();
       if (_compile_process!=null) read_compile();
@@ -635,7 +639,7 @@ class DebugAdapter {
   static function monitor_run_process() {
     var dq:Deque<Int> = Thread.readMessage(true);
     var proc:Process = Thread.readMessage(true);
-    
+
     log("PM: Monitoring process: "+proc.getPid());
     var exit = proc.exitCode();
     log("PM: Detected process exit: "+exit);
