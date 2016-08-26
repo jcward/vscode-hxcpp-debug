@@ -1,6 +1,6 @@
 # vscode-hxcpp-debug
 
-**Status:** Alpha, unstable. Check the [issue list](https://github.com/jcward/vscode-hxcpp-debug/issues).
+**Status:** Beta, somewhat stable, feel free to file issues or check those [currently outstanding](https://github.com/jcward/vscode-hxcpp-debug/issues).
 
 The `vscode-hxcpp-debug` project is a Visual Studio Code extension (a debug
 adapter) that allows for debugging hxcpp applications in VSCode. This includes
