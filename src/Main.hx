@@ -168,10 +168,10 @@ class DebugAdapter {
     var json:String = haxe.format.JsonPrinter.print(response);
     var b = Bytes.ofString(json);
 
-    log("Sending "+b.length+" bytes:");
+    log("----> Sending "+b.length+" bytes:");
     log(json);
 
-    _output.writeString("Content-Length: "+b.length);
+    _output.writeString("Content-Length: "+(b.length));
 #if windows
     _output.writeByte(10);
     _output.writeByte(10);
@@ -235,9 +235,59 @@ class DebugAdapter {
 
     switch command {
       case "initialize": {
-        log("Initializing...");
+        log("Initializing... _run_process is: "+_run_process);
         _init_args = request.arguments;
         response.success = true;
+
+        response.body = {};
+
+        // From debugSession.ts, initializeRequest(), doesn't make a difference:
+
+        // // This default debug adapter does not support conditional breakpoints.
+        // response.body.supportsConditionalBreakpoints = false;
+        //  
+        // // This default debug adapter does not support hit conditional breakpoints.
+        // response.body.supportsHitConditionalBreakpoints = false;
+        //  
+        // // This default debug adapter does not support function breakpoints.
+        // response.body.supportsFunctionBreakpoints = false;
+        //  
+        // // This default debug adapter implements the 'configurationDone' request.
+        // response.body.supportsConfigurationDoneRequest = true;
+        //  
+        // // This default debug adapter does not support hovers based on the 'evaluate' request.
+        // response.body.supportsEvaluateForHovers = false;
+        //  
+        // // This default debug adapter does not support the 'stepBack' request.
+        // response.body.supportsStepBack = false;
+        //  
+        // // This default debug adapter does not support the 'setVariable' request.
+        // response.body.supportsSetVariable = false;
+        //  
+        // // This default debug adapter does not support the 'restartFrame' request.
+        // response.body.supportsRestartFrame = false;
+        //  
+        // // This default debug adapter does not support the 'stepInTargetsRequest' request.
+        // response.body.supportsStepInTargetsRequest = false;
+        //  
+        // // This default debug adapter does not support the 'gotoTargetsRequest' request.
+        // response.body.supportsGotoTargetsRequest = false;
+        //  
+        // // This default debug adapter does not support the 'completionsRequest' request.
+        // response.body.supportsCompletionsRequest = false;
+        //  
+        // // This default debug adapter does not support the 'restart' request.
+        // response.body.supportsRestartRequest = false;
+        //  
+        // // This default debug adapter does not support the 'exceptionOptions' attribute on the 'setExceptionBreakpointsRequest'.
+        // response.body.supportsExceptionOptions = false;
+        //  
+        // // This default debug adapter does not support the 'format' attribute on the 'variablesRequest', 'evaluateRequest', and 'stackTraceRequest'.
+        // response.body.supportsValueFormattingOptions = false;
+        //  
+        // // This debug adapter does not support the 'exceptionInfoRequest' request.
+        // response.body.supportsExceptionInfoRequest = false;
+
         send_response(response);
       }
       case "launch": {
@@ -272,6 +322,10 @@ class DebugAdapter {
         } else {
           if (_runCommand!=null) {
             do_run();
+
+            // The go debug adapter sends this event in response to "launch"
+            send_event({"event":"initialized"});
+
           } else {
             // TODO: terminatedevent...
             log("Compile, but no runCommand, TODO: terminate...");
