@@ -1,0 +1,95 @@
+#!/usr/bin/ruby
+
+require 'json'
+
+@log_file = File.open("/tmp/echo.log", "a")
+
+def log msg
+  @log_file.puts msg
+  @log_file.flush
+end
+
+def send_data data
+  response = JSON.generate data
+  log("Sending #{response.length} bytes: #{response}")
+  sleep 0.1
+  STDOUT.print "Content-Length: #{response.length}"
+  STDOUT.putc 13
+  STDOUT.putc 10
+  STDOUT.putc 13
+  STDOUT.putc 10
+  STDOUT.print response
+  STDOUT.flush
+end
+
+def send_response request, success, data=nil
+  # On a whim, how about a string request_seq ??
+  response = { "success"=>success, "request_seq"=>(""+request["seq"]) }
+  response["body"] = data unless data==nil
+  send_data response
+end
+
+@event_sequence = 1;
+def send_event data
+  data["seq"] = @event_sequence
+  @event_sequence = @event_sequence+1
+  data["type"] = "event"
+  send_data(data);
+end
+
+log("-----------------------------")
+log("Echo debug adapter started...")
+log(`date`)
+log("-----------------------------")
+is_launched = false
+while true do
+  break if STDIN.closed?
+
+  # Expect a content-length: nnn line
+  a = gets rescue nil
+  m = a.match(/Content-Length: (\d+)/)
+  if (m) then
+    # Burn 2 whitespace characters
+    STDIN.getc; STDIN.getc;
+
+    # Read message
+    msg = ''
+    1.upto(m[1].to_i) {
+      msg += STDIN.getc
+    }
+    request = JSON.parse msg
+    log("Got message: #{ request }")
+
+    if (request["command"]=="initialize") then
+      send_response(request, true )
+
+      # After sending initialize success, then send initialized event
+      send_event({"event"=>"initialized"});
+    elsif (request["command"]=="disconnect") then
+      send_response(request, true )
+      log("Got disconnect. Goodbye.")
+      exit
+    elsif (request["command"]=="setBreakpoints") then
+      # Uhh, ok?
+      send_response(request, true )
+    elsif (request["command"]=="threads") then
+      if (!is_launched) then
+        # Send empty thread list
+        send_response(request, true, { "threads"=>[] } )
+      else
+        # Send 1 thread list
+        send_response( { "success"=>true, "threads"=>[{ "name"=>"thread 1", "id"=>1 }] } )
+      end
+    else
+      log("WARNING: Got unknown command: #{ request["command"] }, ignoring...")
+    end
+
+  end
+
+  if (a.start_with?("asdf")) then # debug
+    send_event({"event"=>"initialized"});
+  end
+end
+
+log.flush
+log.close
