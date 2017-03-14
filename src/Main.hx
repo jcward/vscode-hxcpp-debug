@@ -228,6 +228,7 @@ class DebugAdapter {
     log("Got command: "+command);
 
     var response:Dynamic = {
+      type:"response",
       request_seq:request.seq,
       command:request.command,
       success:false
@@ -503,6 +504,7 @@ class DebugAdapter {
   function process_set_breakpoints(request:Dynamic)
   {
     var response:Dynamic = {
+      type:"response",
       request_seq:request.seq,
       command:request.command,
       success:true
