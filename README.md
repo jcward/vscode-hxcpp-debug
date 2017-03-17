@@ -2,6 +2,12 @@
 
 **Status:** Beta, somewhat stable, feel free to file issues or check those [currently outstanding](https://github.com/jcward/vscode-hxcpp-debug/issues).
 
+**Latest updates:**
+
+- Mar 17, 2017: Hugh fixed hxcpp-debugger breakpoints in hxcpp 3.4.64 (on haxelib.) Tested working combo: Haxe 3.4, VSCode 1.8, hxcpp 3.4.64. Though step over is [having issues](https://github.com/jcward/vscode-hxcpp-debug/issues/49).
+
+## About
+
 The `vscode-hxcpp-debug` project is a Visual Studio Code extension (a debug
 adapter) that allows for debugging hxcpp applications in VSCode. This includes
 features like stepping through Haxe code and inspecting variables.
