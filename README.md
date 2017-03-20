@@ -4,7 +4,7 @@
 
 **Latest updates:**
 
-- Mar 17, 2017: Hugh fixed hxcpp-debugger breakpoints in hxcpp 3.4.64 (on haxelib.) Tested working combo: Haxe 3.4, VSCode 1.8, hxcpp 3.4.64. Though step over is [having issues](https://github.com/jcward/vscode-hxcpp-debug/issues/49).
+- Mar 20, 2017: Hugh [recently fixed](https://github.com/HaxeFoundation/hxcpp-debugger/issues/17) hxcpp-debugger breakpoints and step-over, available in [hxcpp 3.4.69](http://nmehost.com/hxcpp/), though removing breakpoints is still an issue - see [issue #50](https://github.com/jcward/vscode-hxcpp-debug/issues/50). Tested working combo: Haxe 3.4, VSCode 1.8, hxcpp 3.4.69.
 
 ## About
 
