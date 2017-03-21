@@ -521,17 +521,17 @@ class DebugAdapter {
     log(" VSC: "+request.arguments.source.path);
     log(" DBG: "+file);
 
-    for (f in breakpoint_state.keys()) {
-      for (ln in breakpoint_state.get(f).keys()) {
-        breakpoint_state.get(f).set(ln, REMOVE_ME);
-      }
+    // Breakpoints messages from VSCode are file-at-a-time, so
+    // mark the bp's in this file as "to be removed"
+    if (!breakpoint_state.exists(file)) breakpoint_state.set(file, new IntMap<DirtyFlag>());
+    for (ln in breakpoint_state.get(file).keys()) {
+      breakpoint_state.get(file).set(ln, REMOVE_ME);
     }
 
     // It doesn't seem hxcpp-debugger corrects/verifies line
     // numbers, so just pass these back as verified
     var breakpoints = [];
     for (line in (request.arguments.lines:Array<Int>)) {
-      if (!breakpoint_state.exists(file)) breakpoint_state.set(file, new IntMap<DirtyFlag>());
       if (!breakpoint_state.get(file).exists(line)) {
         _debugger_commands.add(AddFileLineBreakpoint(file, line));
       }
@@ -540,11 +540,9 @@ class DebugAdapter {
       breakpoints.push({ verified:true, line:line});
     }
 
-    for (f in breakpoint_state.keys()) {
-      for (ln in breakpoint_state.get(f).keys()) {
-        if (breakpoint_state.get(f).get(ln)==REMOVE_ME) {
-          _debugger_commands.add(DeleteFileLineBreakpoint(f, ln));
-        }
+    for (ln in breakpoint_state.get(file).keys()) {
+      if (breakpoint_state.get(file).get(ln)==REMOVE_ME) {
+        _debugger_commands.add(DeleteFileLineBreakpoint(file, ln));
       }
     }
 
