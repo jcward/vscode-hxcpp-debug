@@ -18,6 +18,8 @@ import cpp.vm.Mutex;
 
 import debugger.IController;
 
+typedef DirtyFlag = Bool;
+
 class Main {
   static function main() {
     // new debugger.HaxeRemote(true, "localhost", 7001);
@@ -501,6 +503,9 @@ class DebugAdapter {
     }
   }
 
+  private static inline var REMOVE_ME:DirtyFlag = false;
+  private static inline var DONT_REMOVE_ME:DirtyFlag = true;
+  var breakpoint_state = new StringMap<IntMap<DirtyFlag>>();
   function process_set_breakpoints(request:Dynamic)
   {
     var response:Dynamic = {
@@ -516,14 +521,33 @@ class DebugAdapter {
     log(" VSC: "+request.arguments.source.path);
     log(" DBG: "+file);
 
+    for (f in breakpoint_state.keys()) {
+      for (ln in breakpoint_state.get(f).keys()) {
+        breakpoint_state.get(f).set(ln, REMOVE_ME);
+      }
+    }
+
     // It doesn't seem hxcpp-debugger corrects/verifies line
     // numbers, so just pass these back as verified
     var breakpoints = [];
     for (line in (request.arguments.lines:Array<Int>)) {
-      _debugger_commands.add(AddFileLineBreakpoint(file, line));
+      if (!breakpoint_state.exists(file)) breakpoint_state.set(file, new IntMap<DirtyFlag>());
+      if (!breakpoint_state.get(file).exists(line)) {
+        _debugger_commands.add(AddFileLineBreakpoint(file, line));
+      }
+      breakpoint_state.get(file).set(line, DONT_REMOVE_ME);
 
       breakpoints.push({ verified:true, line:line});
     }
+
+    for (f in breakpoint_state.keys()) {
+      for (ln in breakpoint_state.get(f).keys()) {
+        if (breakpoint_state.get(f).get(ln)==REMOVE_ME) {
+          _debugger_commands.add(DeleteFileLineBreakpoint(f, ln));
+        }
+      }
+    }
+
     response.body = { breakpoints:breakpoints }
     send_response(response);
   }
