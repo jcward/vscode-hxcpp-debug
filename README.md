@@ -30,16 +30,30 @@ haxelib git hxcpp-debugger https://github.com/HaxeFoundation/hxcpp-debugger
 
 Note: Once this project stabilizes, I'll push it to the marketplace for easier installation.
 
-1.  Clone the `vscode-hxcpp-debug` repo
-2.  Build the debug adapter using `haxe build-<platform>.hxml`
-3.  Copy (or symlink) the `vscode-haxe-debug` folder to your VSCode extensions directory:
+1.  Clone the `vscode-hxcpp-debug` repo into your VSCode extensions directory:
+
   - Linux: `$HOME/.vscode/extensions`
   - Mac: `$HOME/.vscode/extensions`
   - Windows: `%USERPROFILE%\.vscode\extensions`
 
+e.g.
+```
+cd ~/.vscode/extensions
+git clone https://github.com/jcward/vscode-hxcpp-debug.git
+```
+
+2.  Build the debug adapter using `haxe build-<platform>.hxml`
+
+e.g.
+```
+cd ~/.vscode/extensions/vscode-hxcpp-debug
+haxe build-linux.hxml
+```
+
 (If it's running, restart Visual Studio Code after installing the extension.)
 
-Note: This extension doesn't provide language support / syntax highlight. For that, install the vscode-haxe extension 
+Note: This extension doesn't provide language support / syntax highlight. For that, search for
+[Haxe in the marketplace](https://marketplace.visualstudio.com/search?term=haxe&target=VSCode&category=All%20categories&sortBy=Relevance).
 
 ## Usage
 
