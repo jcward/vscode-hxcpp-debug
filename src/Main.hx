@@ -543,6 +543,7 @@ class DebugAdapter {
     for (ln in breakpoint_state.get(file).keys()) {
       if (breakpoint_state.get(file).get(ln)==REMOVE_ME) {
         _debugger_commands.add(DeleteFileLineBreakpoint(file, ln));
+        breakpoint_state.get(file).remove(ln);
       }
     }
 
