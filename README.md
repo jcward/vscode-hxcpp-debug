@@ -5,8 +5,8 @@
 **Latest updates:**
 
 - May 17, 2017: Added `test nme`
-  - Tested working: `test openfl` with haxe 3.4.2, hxcpp 3.4.90, openfl 5.0.0, lime 4.1.0, linux64
-  - Tested working: `test nme` with haxe 3.4.2, hxcpp 3.4.90, nme 5.7.1, linux64
+  - Tested working: vscode 1.11.1, `test nme` with haxe 3.4.2, hxcpp 3.4.90, nme 5.7.1, linux64
+  - Tested working: vscode 1.11.1, `test openfl` with haxe 3.4.2, hxcpp 3.4.90, openfl 5.0.0, lime 4.1.0, linux64
 - Mar 20, 2017: Hugh [recently fixed](https://github.com/HaxeFoundation/hxcpp-debugger/issues/17) hxcpp-debugger breakpoints and step-over, available in [hxcpp 3.4.69](http://nmehost.com/hxcpp/), though removing breakpoints is still an issue - see [issue #50](https://github.com/jcward/vscode-hxcpp-debug/issues/50). Tested working combo: Haxe 3.4, VSCode 1.8, hxcpp 3.4.69.
 
 ## About
