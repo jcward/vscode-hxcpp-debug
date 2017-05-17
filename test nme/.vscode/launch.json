@@ -1,0 +1,91 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+
+		{
+			"name": "Windows: Build and Debug",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"compilePath=${workspaceRoot}",
+				"compileCommand=nme build windows -debug -DHXCPP_DEBUGGER",
+				"runPath=${workspaceRoot}/Export/windows/cpp/bin/",
+				"runCommand=DisplayingABitmap.exe",
+				"runInTerminal=false"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"stopOnEntry": true
+		},
+		{
+			"name": "Windows: Debug",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"runPath=${workspaceRoot}/Export/windows/DisplayingABitmap/",
+				"runCommand=DisplayingABitmap.exe",
+				"runInTerminal=false"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		},
+
+		{
+			"name": "Linux: Build and Debug",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"compilePath=${workspaceRoot}",
+				"compileCommand=nme build linux -debug -DHXCPP_DEBUGGER",
+				"runPath=${workspaceRoot}/Export/linux64/DisplayingABitmap/",
+				"runCommand=DisplayingABitmap",
+				"runInTerminal=false"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"stopOnEntry": true
+		},
+		{
+			"name": "Linux: Debug",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"runPath=${workspaceRoot}/Export/linux64/DisplayingABitmap/",
+				"runCommand=DisplayingABitmap",
+				"runInTerminal=false"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		},
+
+		{
+			"name": "OSX: Build and Debug",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"compilePath=${workspaceRoot}",
+				"compileCommand=nme build mac -debug -DHXCPP_DEBUGGER",
+				"runPath=${workspaceRoot}/Export/mac/DisplayingABitmap/",
+				"runCommand=DisplayingABitmap",
+				"runInTerminal=false"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"stopOnEntry": true
+		},
+		{
+			"name": "OSX: Debug",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"runPath=${workspaceRoot}/Export/mac/DisplayingABitmap/",
+				"runCommand=DisplayingABitmap",
+				"runInTerminal=false"
+			],
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "",
+			"stopOnEntry": true
+		}
+
+
+	]
+}
