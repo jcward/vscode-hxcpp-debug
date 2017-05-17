@@ -1,0 +1,5 @@
+{
+    "haxe.displayConfigurations": [ // For VSHaxe language support
+        ["build.hxml"], // For OpenFL, generate using openfl display <platform>
+    ]
+}

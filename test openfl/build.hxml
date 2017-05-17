@@ -1,0 +1,32 @@
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generated via: openfl display neko > build.hxml
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# This file is only needed for code completion compatibility
+# via VSHaxe, and is referenced by ./vscode/settings.json
+# Feel free to regenerate it with the platform and libraries
+# in your project.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-main ApplicationMain 
+--macro openfl._internal.utils.ExtraParams.include()
+-cp /opt/haxe-3.2.0/lib/openfl/5,0,0
+-D openfl=5.0.0
+--macro lime.Lib.extraParams()
+-cp /opt/haxe-3.2.0/lib/lime/4,1,0
+-D lime=4.1.0
+-cp Source
+-cp /opt/haxe-3.2.0/lib/openfl/5,0,0/externs/core/openfl
+-cp /opt/haxe-3.2.0/lib/openfl/5,0,0/externs/extras
+-D tools=4.1.0
+-D no-compilation
+-D native
+-D lime-native
+-D lime-vorbis
+-D openfl-native
+-D lime-cffi
+-D linux
+-D desktop
+--remap flash:openfl
+-cp Export/linux64/neko/release/haxe
+-neko Export/linux64/neko/release/obj/ApplicationMain.n
+--macro keep("Main")
+-D display
