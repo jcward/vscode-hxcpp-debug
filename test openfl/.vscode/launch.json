@@ -20,7 +20,7 @@
 			"name": "Windows: Debug",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"runPath=${workspaceRoot}/Export/windows/cpp/bin/",
+				"runPath=${workspaceRoot}/Export/windows/cpp/debug/bin/",
 				"runCommand=DisplayingABitmap.exe",
 				"runInTerminal=false"
 			],
@@ -36,7 +36,7 @@
 			"args": [
 				"compilePath=${workspaceRoot}",
 				"compileCommand=openfl build linux -debug -DHXCPP_DEBUGGER",
-				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
+				"runPath=${workspaceRoot}/Export/linux64/cpp/debug/bin/",
 				"runCommand=DisplayingABitmap",
 				"runInTerminal=false"
 			],
@@ -48,7 +48,7 @@
 			"name": "Linux: Debug",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"runPath=${workspaceRoot}/Export/linux64/cpp/bin/",
+				"runPath=${workspaceRoot}/Export/linux64/cpp/debug/bin/",
 				"runCommand=DisplayingABitmap",
 				"runInTerminal=false"
 			],
@@ -64,7 +64,7 @@
 			"args": [
 				"compilePath=${workspaceRoot}",
 				"compileCommand=openfl build mac -debug -DHXCPP_DEBUGGER",
-				"runPath=${workspaceRoot}/Export/mac/cpp/bin/",
+				"runPath=${workspaceRoot}/Export/mac/cpp/debug/bin/",
 				"runCommand=DisplayingABitmap",
 				"runInTerminal=false"
 			],
@@ -76,7 +76,7 @@
 			"name": "OSX: Debug",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"runPath=${workspaceRoot}/Export/mac/cpp/bin/",
+				"runPath=${workspaceRoot}/Export/mac/cpp/debug/bin/",
 				"runCommand=DisplayingABitmap",
 				"runInTerminal=false"
 			],
