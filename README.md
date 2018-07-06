@@ -1,6 +1,13 @@
 # vscode-hxcpp-debug
 
-**Status:** Beta, somewhat stable, feel free to file issues or check those [currently outstanding](https://github.com/jcward/vscode-hxcpp-debug/issues).
+**Status:** Currently inactive. Check out these alternatives:
+
+- Vshaxe's [HXCPP debugger](https://github.com/vshaxe/hxcpp-debugger) plugin (available directly from [the marketplace](https://marketplace.visualstudio.com/items?itemName=vshaxe.hxcpp-debugger)).
+- Alternately, Proletariat Games' [unreal.hx fork of this repo](https://github.com/proletariatgames/vscode-hxcpp-debug/tree/unreal.hx) (which has more recent commits).
+
+---
+
+**Previous status:** Beta, somewhat stable, feel free to file issues or check those [currently outstanding](https://github.com/jcward/vscode-hxcpp-debug/issues).
 
 **Latest updates:**
 
